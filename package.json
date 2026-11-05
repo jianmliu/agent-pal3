@@ -1,0 +1,10 @@
+{
+  "name": "agent-pal3",
+  "version": "1.0.0",
+  "description": "Headless Agent Benchmark & Portable Runtime Host for Chinese Paladin 3 (仙剑奇侠传三) built on OpenPAL3 & OpenPAL4",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run-headless-bench.mjs",
+    "test:headless": "node tests/run-headless-bench.mjs --mode normal && node tests/run-headless-bench.mjs --mode pure"
+  }
+}

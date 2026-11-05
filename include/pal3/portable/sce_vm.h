@@ -1,0 +1,310 @@
+#pragma once
+
+#include <array>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace pal3::portable {
+
+// Global variable indices in PAL3 .sce bytecode (`OpenPAL3/yaobow/shared/src/scripting/sce/vm.rs`)
+constexpr std::int16_t kSceVarMainStory = -32768;   // 0x8000: Main story progress `g_story`
+constexpr std::int16_t kSceVarDlgSelect = -32767;   // 0x8001: Result of `DlgSel` (0..N-1)
+
+// PAL3 .sce opcodes matching `OpenPAL3/yaobow/shared/src/scripting/sce/vm.rs`
+enum class SceOpcode : std::uint16_t {
+    idle = 1,
+    script_run_mode = 2,
+    goto_addr = 3,
+    call_proc = 4,
+    fop = 5,
+    gt = 6,
+    ls = 7,
+    eq = 8,
+    neq = 9,
+    geq = 10,
+    leq = 11,
+    test_goto = 12,
+    assign = 13,
+    add = 14,
+    sub = 15,
+    between = 19,
+    role_path_to = 22,
+    role_set_pos = 23,
+    role_set_layer = 24,
+    role_set_face = 25,
+    role_set_controller = 27,
+    role_show_action = 29,
+    role_set_visible = 31,
+    camera_move = 34,
+    dlg_sel = 37,
+    favor_add = 43,
+    add_item = 46,
+    remove_item = 47,
+    add_money = 48,
+    get_money = 49,
+    add_skill = 51,
+    movie = 63,
+    load_scene = 64,
+    role_active = 67,
+    music = 73,
+    have_item = 78,
+    combat_boss = 80,
+    combat = 81,
+    combat_max_round = 82,
+    combat_must_fail = 83,
+    object_active = 91,
+    object_move = 92,
+    object_play = 93,
+    appr_entry = 104,
+    encamp_entry = 106,
+    skee_entry = 107,
+    get_appr = 108,
+    get_combat = 132,
+    if_in_team = 137,
+    yujian = 155,
+    user_input = 200,
+    dlg = 201,
+    in_team = 202,
+    show_chat_rest = 249,
+};
+
+enum class SceFopOp : std::int32_t {
+    nop = 0,
+    logical_and = 1,
+    logical_or = 2,
+};
+
+// Restorable boolean accumulator used by FOP(5), GT..LEQ(6..11), Between(19), HaveItem(78), IfInTeam(137), TestGoto(12)
+struct SceFopState {
+    std::optional<bool> lhs;
+    std::optional<bool> rhs;
+    SceFopOp op{SceFopOp::nop};
+
+    void SetOp(SceFopOp next_op);
+    void PushValue(bool value);
+    bool ReadValueAndReset();
+};
+
+struct SceProc {
+    std::uint32_t id{1};
+    std::string name;
+    std::uint16_t local_var_count{8};
+    std::vector<std::uint8_t> instructions;
+};
+
+struct SceFile {
+    std::uint8_t version{1};
+    std::map<std::uint32_t, SceProc> procs;
+};
+
+// Serializes/parses binary PAL3 .sce files (magic "SCE\0")
+std::vector<std::uint8_t> SerializeSceFile(const SceFile& sce);
+SceFile ParseSceFile(std::span<const std::uint8_t> bytes);
+
+// Ergonomic builder for constructing authentic PAL3 .sce procedure bytecode
+class SceAssembler {
+public:
+    std::size_t CurrentOffset() const noexcept { return code_.size(); }
+
+    void EmitIdle(float seconds);
+    void EmitScriptRunMode(std::int32_t mode);
+    std::size_t EmitGotoPlaceholder();
+    void EmitGoto(std::uint32_t target_offset);
+    void PatchJumpTarget(std::size_t addr_pos, std::uint32_t target_offset);
+    void EmitCall(std::uint32_t proc_id);
+    void EmitFop(SceFopOp op);
+    void EmitCompareVarConst(SceOpcode cmp_op, std::int16_t var, std::int32_t value);
+    void EmitCompareVarVar(SceOpcode cmp_op, std::int16_t var_a, std::int16_t var_b);
+    std::size_t EmitTestGotoPlaceholder();
+    void EmitTestGoto(std::uint32_t target_offset);
+    void EmitAssign(std::int16_t var, std::int32_t value);
+    void EmitAdd(std::int16_t var, std::int32_t value);
+    void EmitSub(std::int16_t var, std::int32_t value);
+    void EmitBetween(std::int16_t var, std::int32_t lb, std::int32_t ub);
+    void EmitRolePathTo(std::int32_t role_id, std::int32_t nav_x, std::int32_t nav_z, std::int32_t flag = 0);
+    void EmitRoleSetPos(std::int32_t role_id, std::int32_t nav_x, std::int32_t nav_z);
+    void EmitRoleSetLayer(std::int32_t role_id, std::int32_t layer);
+    void EmitRoleSetFace(std::int32_t role_id, std::int32_t dir);
+    void EmitRoleSetController(std::int32_t role_id);
+    void EmitRoleShowAction(std::int32_t role_id, std::string_view action_name, std::int32_t repeat_mode = 1);
+    void EmitRoleSetVisible(std::int32_t role_id, std::int32_t visible);
+    void EmitCameraMove(float x, float y, float z, float duration_sec, std::int32_t mode = 0);
+    void EmitDlg(std::string_view text);
+    void EmitDlgSel(std::span<const std::string> choices);
+    void EmitFavorAdd(std::int32_t role_id, std::int32_t delta);
+    void EmitAddItem(std::int32_t item_id, std::int32_t count);
+    void EmitRemoveItem(std::int32_t item_id, std::int32_t count);
+    void EmitAddMoney(std::int32_t delta);
+    void EmitGetMoney(std::int16_t out_var);
+    void EmitAddSkill(std::int32_t role_id, std::int32_t skill_id);
+    void EmitMovie(std::string_view movie_name);
+    void EmitLoadScene(std::string_view cpk_name, std::string_view scn_name);
+    void EmitRoleActive(std::int32_t role_id, std::int32_t active);
+    void EmitMusic(std::string_view bgm_name, std::int32_t loop = 1);
+    void EmitHaveItem(std::int32_t item_id);
+    void EmitCombatBoss(std::array<std::uint32_t, 6> monster_ids);
+    void EmitCombat(std::array<std::uint32_t, 3> monster_ids);
+    void EmitCombatMaxRound(std::int32_t max_round);
+    void EmitCombatMustFail();
+    void EmitGetCombat(std::int16_t out_var);
+    void EmitObjectActive(std::int32_t obj_id, std::int32_t active);
+    void EmitObjectMove(std::int32_t obj_id, float x, float y, float z, float duration_sec);
+    void EmitObjectPlay(std::int32_t obj_id, std::string_view anim_name, float duration_sec);
+    void EmitApprEntry(std::uint32_t antique_id);
+    void EmitGetAppr(std::int16_t out_var);
+    void EmitEncampEntry(std::uint32_t encamp_id);
+    void EmitSkeeEntry(std::uint32_t course_id);
+    void EmitYuJian();
+    void EmitIfInTeam(std::int32_t role_id);
+    void EmitInTeam(std::int32_t role_id, std::int32_t in_team);
+    void EmitUserInput(std::int32_t enable);
+    void EmitShowChatRest(std::string_view prompt, std::int32_t cost,
+                          std::uint32_t no_money_proc, std::uint32_t after_rest_proc);
+
+    SceProc BuildProc(std::uint32_t id, std::string name, std::uint16_t local_var_count = 16) const;
+
+private:
+    void EmitOpHeader(SceOpcode op, std::uint16_t param_flag = 0);
+    void WriteU16(std::uint16_t v);
+    void WriteI16(std::int16_t v);
+    void WriteU32(std::uint32_t v);
+    void WriteI32(std::int32_t v);
+    void WriteF32(float v);
+    void WriteString(std::string_view s);
+
+    std::vector<std::uint8_t> code_;
+};
+
+// Host engine services invoked by SceVm instructions
+struct ISceEngineServices {
+    virtual ~ISceEngineServices() = default;
+
+    virtual void SceRolePathTo(std::int32_t role_id, std::int32_t nav_x, std::int32_t nav_z) = 0;
+    virtual void SceRoleSetPos(std::int32_t role_id, std::int32_t nav_x, std::int32_t nav_z) = 0;
+    virtual void SceRoleSetLayer(std::int32_t role_id, std::int32_t layer) = 0;
+    virtual void SceRoleSetFace(std::int32_t role_id, std::int32_t dir) = 0;
+    virtual void SceRoleSetController(std::int32_t role_id) = 0;
+    virtual float SceRoleShowAction(std::int32_t role_id, std::string_view action_name,
+                                    std::int32_t repeat_mode) = 0;
+    virtual void SceRoleSetVisible(std::int32_t role_id, bool visible) = 0;
+    virtual void SceRoleActive(std::int32_t role_id, bool active) = 0;
+    virtual void SceCameraMove(float x, float y, float z, float duration_sec, std::int32_t mode) = 0;
+
+    virtual void SceShowDialog(std::string_view text) = 0;
+    virtual void SceShowDialogSelection(std::span<const std::string> choices) = 0;
+    virtual void SceFavorAdd(std::int32_t role_id, std::int32_t delta) = 0;
+    virtual void SceAddItem(std::int32_t item_id, std::int32_t count) = 0;
+    virtual void SceRemoveItem(std::int32_t item_id, std::int32_t count) = 0;
+    virtual bool SceHaveItem(std::int32_t item_id) const = 0;
+    virtual void SceAddMoney(std::int32_t delta) = 0;
+    virtual std::int32_t SceGetMoney() const = 0;
+    virtual void SceAddSkill(std::int32_t role_id, std::int32_t skill_id) = 0;
+    virtual bool SceIsInTeam(std::int32_t role_id) const = 0;
+    virtual void SceSetInTeam(std::int32_t role_id, bool in_team) = 0;
+
+    virtual void ScePlayMovie(std::string_view movie_name) = 0;
+    virtual void ScePlayMusic(std::string_view bgm_name, std::int32_t loop) = 0;
+    virtual void SceLoadScene(std::string_view cpk_name, std::string_view scn_name) = 0;
+    virtual void SceObjectActive(std::int32_t obj_id, bool active) = 0;
+    virtual void SceObjectMove(std::int32_t obj_id, float x, float y, float z, float duration_sec) = 0;
+    virtual float SceObjectPlay(std::int32_t obj_id, std::string_view anim_name, float duration_sec) = 0;
+    virtual void SceSetUserInputEnabled(bool enabled) = 0;
+
+    virtual void SceConfigureNextCombat(std::optional<std::int32_t> max_round, bool must_fail) = 0;
+    virtual void SceStartCombat(std::span<const std::uint32_t> monster_ids, bool is_boss) = 0;
+    virtual std::int32_t SceGetLastCombatResult() const = 0;
+
+    virtual void SceStartAppraisalMinigame(std::uint32_t antique_id) = 0;
+    virtual std::int32_t SceGetLastAppraisalResult() const = 0;
+    virtual void SceStartEncampmentMinigame(std::uint32_t encamp_id) = 0;
+    virtual void SceStartSkiMinigame(std::uint32_t course_id) = 0;
+    virtual void SceOpenYuJianMap() = 0;
+    virtual void SceRestAtInn(std::string_view prompt, std::int32_t cost,
+                              std::uint32_t no_money_proc, std::uint32_t after_rest_proc) = 0;
+};
+
+struct SceActiveTask {
+    SceOpcode opcode{SceOpcode::idle};
+    float remaining_sec{0.0f};
+    bool waiting_for_choice{false};
+    bool waiting_for_combat{false};
+    bool waiting_for_minigame{false};
+    std::string description;
+};
+
+struct SceStackFrame {
+    std::uint32_t proc_id{1};
+    std::string proc_name;
+    std::size_t pc{0};
+    std::map<std::int16_t, std::int32_t> local_vars;
+};
+
+struct SceVmSnapshot {
+    std::string active_cpk;
+    std::string active_scn;
+    std::int32_t run_mode{1};
+    SceFopState fop_state;
+    std::map<std::int16_t, std::int32_t> global_vars;
+    std::vector<SceStackFrame> call_stack;
+    std::vector<SceActiveTask> active_tasks;
+};
+
+class SceVm {
+public:
+    explicit SceVm(ISceEngineServices& services);
+
+    void SetSceneScript(std::string_view cpk_name, std::string_view scn_name, SceFile sce);
+    void SetSystemScript(SceFile sys_sce);
+
+    void CallProc(std::uint32_t proc_id);
+    void Step(float dt_sec, bool fast_forward_timers = false);
+
+    // Resumes blocking states when the agent answers a dialog choice, finishes combat, or finishes a minigame
+    void SubmitDialogSelection(std::int32_t choice_index);
+    void NotifyCombatFinished();
+    void NotifyMinigameFinished();
+
+    bool IsIdle() const noexcept { return call_stack_.empty() && active_tasks_.empty(); }
+    bool IsWaitingForChoice() const noexcept;
+    bool IsWaitingForCombat() const noexcept;
+    bool IsWaitingForMinigame() const noexcept;
+
+    std::int32_t RunMode() const noexcept { return run_mode_; }
+    const std::vector<SceActiveTask>& ActiveTasks() const noexcept { return active_tasks_; }
+
+    std::int32_t GetVar(std::int16_t var) const;
+    void SetVar(std::int16_t var, std::int32_t value);
+    const std::map<std::int16_t, std::int32_t>& GlobalVars() const noexcept { return global_vars_; }
+    std::map<std::int16_t, std::int32_t>& MutableGlobalVars() noexcept { return global_vars_; }
+
+    SceVmSnapshot CaptureSnapshot() const;
+    void RestoreSnapshot(const SceVmSnapshot& snap);
+
+private:
+    const SceProc* FindProc(std::uint32_t proc_id) const;
+    void RunProcExitHooks(std::uint32_t proc_id);
+    bool FetchAndExecuteNextInstruction(bool fast_forward_timers);
+
+    ISceEngineServices& services_;
+    std::string active_cpk_;
+    std::string active_scn_;
+    SceFile scene_sce_;
+    SceFile sys_sce_;
+
+    std::int32_t run_mode_{1};  // 1 = serial step, 2 = parallel/concurrent
+    SceFopState fop_state_;
+    std::map<std::int16_t, std::int32_t> global_vars_;
+    std::vector<SceStackFrame> call_stack_;
+    std::vector<SceActiveTask> active_tasks_;
+
+    std::optional<std::int32_t> pending_combat_max_round_;
+    bool pending_combat_must_fail_{false};
+};
+
+}  // namespace pal3::portable
