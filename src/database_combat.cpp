@@ -97,11 +97,14 @@ Pal3Database::Pal3Database() {
         {6401, {6401, "雷灵珠", "spirit_pearl", 0, 0, 20, 0}},
         {6402, {6402, "风灵珠", "spirit_pearl", 0, 0, 25, 0}},
         {6403, {6403, "圣灵珠", "spirit_pearl", 0, 0, 35, 0}},
+        {6404, {6404, "土灵珠", "spirit_pearl", 0, 0, 20, 0}},
+        {6405, {6405, "火灵珠", "spirit_pearl", 0, 0, 25, 0}},
+        {6406, {6406, "水灵珠", "spirit_pearl", 0, 0, 30, 0}},
         {6501, {6501, "雪莲精", "consumable", 500, 300, 0, 800}},
     };
 
     monsters_ = {
-        // Stage 1: Yuzhou Bamboo Forest - Chonglou 5-round encounter
+        // Stage 1: Yuzhou Bamboo Forest - Chonglou 3-round encounter
         {9001, {9001, "魔尊·重楼(初战)", Pal3Element::fire, true, 9999, 75, 60, 75, 500, 800, 0}},
         // Stage 2: Bishan & Jiulongpo - Pilittang Disciple Leader
         {9002, {9002, "霹雳堂头目", Pal3Element::thunder, true, 680, 55, 25, 52, 350, 500, 6101}},
@@ -112,6 +115,18 @@ Pal3Database::Pal3Database() {
         // Stage 5: Sword Tomb Finale - Evil Sword Immortal (`邪剑仙`) & New Immortal Realm Chonglou (`重楼·终战`)
         {9005, {9005, "邪剑仙", Pal3Element::water, true, 2600, 115, 55, 72, 3000, 5000, 6403}},
         {9006, {9006, "魔尊·重楼(新仙界)", Pal3Element::fire, true, 3200, 130, 65, 80, 5000, 9999, 6402}},
+        // Additional Bosses across the full 24-Chapter PAL3 Campaign
+        {9007, {9007, "唐门长老·唐泰", Pal3Element::earth, true, 520, 52, 22, 50, 300, 450, 6101}},
+        {9008, {9008, "雷州刺史少爷·云霆", Pal3Element::thunder, true, 620, 60, 28, 56, 500, 800, 6401}},
+        {9009, {9009, "霹雳堂堂主·罗如烈", Pal3Element::earth, true, 780, 65, 30, 54, 650, 1000, 6404}},
+        {9010, {9010, "九顶山·人面兽", Pal3Element::wind, true, 820, 68, 32, 58, 700, 1100, 6102}},
+        {9011, {9011, "蓬莱·邪剑仙幻影", Pal3Element::water, true, 900, 70, 34, 60, 750, 1200, 6101}},
+        {9012, {9012, "灵山仙人洞·银眉妖狐", Pal3Element::wind, true, 1100, 74, 36, 62, 900, 1400, 6102}},
+        {9013, {9013, "神魔之井·神魔守卫", Pal3Element::thunder, true, 1350, 80, 40, 64, 1100, 1600, 6101}},
+        {9014, {9014, "鬼界无常殿·赵无延", Pal3Element::earth, true, 1400, 82, 38, 60, 1200, 2000, 6102}},
+        {9015, {9015, "熔岩地狱·火鬼王", Pal3Element::fire, true, 1650, 88, 42, 66, 1500, 2200, 6405}},
+        {9016, {9016, "海底城·帝江神兽", Pal3Element::water, true, 1850, 92, 46, 68, 1800, 2600, 6406}},
+        {9017, {9017, "剑冢外围·魔化罗如烈", Pal3Element::fire, true, 2100, 98, 48, 70, 2200, 3000, 6501}},
     };
 }
 

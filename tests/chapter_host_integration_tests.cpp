@@ -29,6 +29,7 @@ int main() {
     assert(host.current_scn == "yn01a");
     assert(host.StoryProgress() == 10101);
     assert(host.total_draw_calls >= 2u);
+    assert(host.scene_catalog.size() == 24u);
 
     // Cross-layer navigation to Zhao Wenchang on layer 1 + Antique Appraisal + SceProcHooks (10101 -> 10202)
     const auto move_res = host.MoveLeaderTo(40.0f, 40.0f, 1u);
@@ -48,6 +49,23 @@ int main() {
     host.LoadCheckpoint(cp);
     assert(host.current_cpk == "q01");
     assert(host.StoryProgress() == 10202);
+
+    // Verify all 5 canonical endings evaluation
+    host.demon_sword.equipped_divine_sword = "圣灵魔剑";
+    assert(host.EvaluateEndingName().find("完美结局") != std::string::npos);
+    host.demon_sword.equipped_divine_sword = "圣灵镇妖剑";
+    host.favor[1] = 90;
+    host.favor[2] = 40;
+    assert(host.EvaluateEndingName().find("雪见结局") != std::string::npos);
+    host.favor[1] = 40;
+    host.favor[2] = 95;
+    assert(host.EvaluateEndingName().find("龙葵结局") != std::string::npos);
+    host.favor[2] = 40;
+    host.favor[5] = 85;
+    assert(host.EvaluateEndingName().find("花楹结局") != std::string::npos);
+    host.favor[5] = 20;
+    host.favor[3] = 85;
+    assert(host.EvaluateEndingName().find("紫萱结局") != std::string::npos);
 
     std::cout << "[PASS] pal3_chapter_host_integration_tests\n";
     return 0;

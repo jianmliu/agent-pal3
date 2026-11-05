@@ -149,6 +149,7 @@ async function runBenchmark() {
     const bridgeOpened = await client.send({ cmd: 'interact', target_type: 'object', id: 30 });
     assert.ok(bridgeOpened.objects[0].cvd_anim_time >= 1.0);
     checkStory(bridgeOpened, 20200);
+    await client.send({ cmd: 'save_checkpoint', slot: 'm01_full_campaign' });
     console.log(
       `[PASS] 6. 踩踏触发器跨包切入【璧山】(m01.cpk) 与 .cvd 机关石桥关键帧驱动 (ObjectPlay): cvd_anim_time=${bridgeOpened.objects[0].cvd_anim_time}s`,
     );
@@ -288,8 +289,194 @@ async function runBenchmark() {
       `[PASS] 15. 全状态内存快照毫秒级回滚验证 (save_checkpoint / load_checkpoint): 成功恢复至剑冢决战前状态`,
     );
 
+    // Step 16: Full 24-Chapter Continuous Campaign Playthrough (Ch.2 Bishan -> Ch.3 Jiulongpo -> Ch.4 Dadukou -> Ch.5 Binhua Pawnshop -> Ch.6 Penglai -> Ch.7 Tangjiabao -> Ch.8 Deyang Earth Pearl -> Ch.9 Anning -> Ch.10 Guteng -> Ch.11 Shushan -> Ch.12 Jiudingshan -> Ch.13 Leizhou Thunder Pearl -> Ch.14 Shenmo Well -> Ch.15 Divine Realm Wind Pearl -> Ch.16 Ghost Realm -> Ch.17 Melt Hell Fire Pearl -> Ch.18 Suoyaota -> Ch.19-20 Manzhou Celadon Appraisal & Lingshan Fox -> Ch.21 Undersea City Water Pearl -> Ch.22 Bingfeng -> Ch.23 Sword Tomb -> Ch.24 New Immortal Realm Heroine Ending)
+    const winCurrentBattle = async (skillId = 4001) => {
+      let state = await client.send({ cmd: 'observe' });
+      while (state.combat.active) {
+        state = await client.send({ cmd: 'combat_action', action: 'combo', skill_id: skillId });
+      }
+      return state;
+    };
+
+    const backM01 = await client.send({ cmd: 'load_checkpoint', slot: 'm01_full_campaign' });
+    assert.equal(backM01.cpk, 'm01');
+    assert.equal(backM01.scn, 'm01');
+
+    // Ch.2 Bishan -> Ch.3 Jiulongpo (m01/m02)
+    await client.send({ cmd: 'move_to', x: 35, z: -35, layer: 0 });
+    const inM02 = await client.send({ cmd: 'interact', target_type: 'npc', id: 15 });
+    assert.equal(inM02.scn, 'm02');
+
+    // Ch.3 Jiulongpo -> Ch.4 Dadukou (m01/m03)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 16 });
+    const inM03 = await winCurrentBattle(3102);
+    assert.equal(inM03.scn, 'm03');
+
+    // Ch.4 Dadukou -> Ch.5 Binhua (q01/binhua)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    const inBinhua = await client.send({ cmd: 'interact', target_type: 'npc', id: 17 });
+    assert.equal(inBinhua.cpk, 'q01');
+    assert.equal(inBinhua.scn, 'binhua');
+
+    // Ch.5 Binhua Pawnshop Management (`PawnshopEntry`) + Meet Changqing/Zixuan -> Ch.6 Penglai (q03/q03)
+    await client.send({ cmd: 'move_to', x: 20, z: 15, layer: 0 });
+    const startPawn = await client.send({ cmd: 'interact', target_type: 'npc', id: 11 });
+    assert.equal(startPawn.minigame.active, true);
+    assert.equal(startPawn.minigame.kind, 'pawnshop');
+    const donePawn = await client.send({ cmd: 'minigame_action', action: 'deal', option: 2 });
+    assert.equal(donePawn.minigame.pawnshops_completed, 1);
+
+    await client.send({ cmd: 'move_to', x: -25, z: -20, layer: 0 });
+    const inPenglai = await client.send({ cmd: 'interact', target_type: 'npc', id: 12 });
+    assert.equal(inPenglai.cpk, 'q03');
+    assert.equal(inPenglai.scn, 'q03');
+
+    // Ch.6 Penglai Phantom -> Ch.7 Tangjiabao (q01/tangjiabao)
+    await client.send({ cmd: 'move_to', x: -25, z: 10, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 20 });
+    const inTangjiabao = await winCurrentBattle(4001);
+    assert.equal(inTangjiabao.scn, 'tangjiabao');
+
+    // Ch.7 Tangjiabao Elder Tang Tai -> Ch.8 Deyang Pilittang Dungeon (m01/m06)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 13 });
+    const inM06 = await winCurrentBattle(4001);
+    assert.equal(inM06.scn, 'm06');
+
+    // Ch.8 Deyang Boss Luo Rulie -> Obtain Earth Spirit Pearl (`6404` 土灵珠) -> Ch.9 Anning (q03/anning)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 18 });
+    const inAnning = await winCurrentBattle(4001);
+    assert.equal(inAnning.scn, 'anning');
+    assert.equal(inAnning.inventory.items.some((i) => i.id === 6404), true);
+
+    // Ch.9 Anning Encampment (choose Longkui option=2) -> Ch.10 Guteng Forest (q03/guteng)
+    await client.send({ cmd: 'move_to', x: 0, z: -20, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 21 });
+    const inGuteng = await client.send({ cmd: 'minigame_action', action: 'talk', option: 2 });
+    assert.equal(inGuteng.scn, 'guteng');
+
+    // Ch.10 Guteng Boss -> Ch.11 Shushan (q03/shushan)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 22 });
+    const inShushan = await winCurrentBattle(4001);
+    assert.equal(inShushan.scn, 'shushan');
+
+    // Ch.11 Shushan Elder Qingwei -> Ch.12 Jiudingshan (m01/m10)
+    await client.send({ cmd: 'move_to', x: 0, z: -20, layer: 0 });
+    const inM10 = await client.send({ cmd: 'interact', target_type: 'npc', id: 23 });
+    assert.equal(inM10.scn, 'm10');
+
+    // Ch.12 Jiudingshan Boss Renmianshou -> Ch.13 Leizhou (q01/leizhou)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 19 });
+    const inLeizhou = await winCurrentBattle(4002);
+    assert.equal(inLeizhou.scn, 'leizhou');
+
+    // Ch.13 Leizhou Yunting -> Obtain Thunder Spirit Pearl (`6401` 雷灵珠) -> Ch.14 Shenmo Well (m18/shenmo)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 14 });
+    const inShenmo = await winCurrentBattle(4002);
+    assert.equal(inShenmo.scn, 'shenmo');
+    assert.equal(inShenmo.inventory.items.some((i) => i.id === 6401), true);
+
+    // Ch.14 Shenmo Well Boss -> Ch.15 Divine Realm (m18/shenjie)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 26 });
+    const inShenjie = await winCurrentBattle(4002);
+    assert.equal(inShenjie.scn, 'shenjie');
+
+    // Ch.15 Divine Realm Xiyao -> Obtain Wind Spirit Pearl (`6402` 风灵珠) -> Ch.16 Ghost Realm (m18/guijie)
+    await client.send({ cmd: 'move_to', x: 0, z: -20, layer: 0 });
+    const inGuijie = await client.send({ cmd: 'interact', target_type: 'npc', id: 27 });
+    assert.equal(inGuijie.scn, 'guijie');
+    assert.equal(inGuijie.inventory.items.some((i) => i.id === 6402), true);
+
+    // Ch.16 Ghost Realm Zhao Wuyan -> Ch.17 Melt Hell (m18/rongyan)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 28 });
+    const inRongyan = await winCurrentBattle(4002);
+    assert.equal(inRongyan.scn, 'rongyan');
+
+    // Ch.17 Melt Hell Fire Ghost King -> Obtain Fire Spirit Pearl (`6405` 火灵珠) -> Ch.18 Suoyaota (m18/m18)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 29 });
+    const inM18Full = await winCurrentBattle(4002);
+    assert.equal(inM18Full.scn, 'm18');
+    assert.equal(inM18Full.inventory.items.some((i) => i.id === 6405), true);
+
+    // Ch.18 Suoyaota Elevator + Emperor of Sky Demons (`id=30`) -> Ch.19-20 Manzhou (q03/manzhou)
+    await client.send({ cmd: 'move_to', x: 10, z: 10, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'ladder', id: 40 });
+    await client.send({ cmd: 'move_to', x: -35, z: 45, layer: 1 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 30 });
+    const inManzhou = await winCurrentBattle(4002);
+    assert.equal(inManzhou.scn, 'manzhou');
+
+    // Ch.19-20 Manzhou Celadon Bowl Appraisal (`APPREntry(2)`) + Lingshan Silver-Brow Fox -> Ch.21 Undersea City (m18/haidicheng)
+    await client.send({ cmd: 'move_to', x: 20, z: 10, layer: 0 });
+    const startCeladon = await client.send({ cmd: 'interact', target_type: 'npc', id: 24 });
+    assert.equal(startCeladon.minigame.active, true);
+    const doneCeladon = await client.send({ cmd: 'minigame_action', action: 'inspect', option: 2 });
+    assert.equal(doneCeladon.inventory.items.some((i) => i.id === 6202), true);
+
+    await client.send({ cmd: 'move_to', x: -20, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 25 });
+    const inHaidicheng = await winCurrentBattle(4002);
+    assert.equal(inHaidicheng.scn, 'haidicheng');
+
+    // Ch.21 Undersea City Dijiang Beast -> Obtain Water Spirit Pearl (`6406` 水灵珠, all 5 Pearls collected!) -> Ch.22 Bingfeng (m23/bingfeng)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 31 });
+    const inBingfeng = await winCurrentBattle(4003);
+    assert.equal(inBingfeng.scn, 'bingfeng');
+    assert.equal(inBingfeng.inventory.items.some((i) => i.id === 6406), true);
+    assert.equal(inBingfeng.demon_sword.purification_level, 6);
+    assert.equal(inBingfeng.demon_sword.infused_elements.length, 5);
+
+    // Ch.22 Bingfeng Skiing + YuJian flight -> Ch.23a Sword Tomb Outer (m23/jianzhong_outer)
+    await client.send({ cmd: 'move_to', x: 0, z: -20, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 32 });
+    await client.send({ cmd: 'minigame_action', action: 'jump', option: 1 });
+    const inJianzhongOuter = await client.send({
+      cmd: 'minigame_action',
+      action: 'fly',
+      option: 4,
+      destination: 'm23/jianzhong_outer',
+    });
+    assert.equal(inJianzhongOuter.scn, 'jianzhong_outer');
+
+    // Ch.23a Sword Tomb Outer Demonic Luo Rulie -> Ch.23b Sword Tomb Furnace (m23/m23)
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 33 });
+    const inM23Full = await winCurrentBattle(4003);
+    assert.equal(inM23Full.scn, 'm23');
+
+    // Ch.23b Choose 【圣灵镇妖剑】 (`index: 1`) + Defeat Evil Sword Immortal (`id=34`) -> Obtain Holy Spirit Pearl (`6403`) -> Ch.24 New Immortal Realm (m23/xinxianjie)
+    await client.send({ cmd: 'move_to', x: 0, z: 15, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'aabb', id: 50 });
+    const forgedZhenyaojian = await client.send({ cmd: 'choose', index: 1 });
+    assert.equal(forgedZhenyaojian.demon_sword.equipped_divine_sword, '圣灵镇妖剑');
+
+    await client.send({ cmd: 'move_to', x: 30, z: -35, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 34 });
+    const inXinxianjie = await winCurrentBattle(4003);
+    assert.equal(inXinxianjie.scn, 'xinxianjie');
+    assert.equal(inXinxianjie.inventory.items.some((i) => i.id === 6403), true);
+
+    // Ch.24 New Immortal Realm Chonglou (`id=35`) -> Heroine Branch Ending!
+    await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+    await client.send({ cmd: 'interact', target_type: 'npc', id: 35 });
+    const fullCampaignEnd = await winCurrentBattle(4003);
+    assert.equal(fullCampaignEnd.game_cleared, true);
+    assert.ok(fullCampaignEnd.ending_name.includes('龙葵结局') || fullCampaignEnd.ending_name.includes('雪见结局'));
+    console.log(
+      `[PASS] 16. 原作完整 24 章全主线贯通验证 (宾化当铺经营/青瓷鉴宝/五灵珠齐聚 Lv.${fullCampaignEnd.demon_sword.purification_level}/圣灵珠/新仙界多结局分支): 结局="${fullCampaignEnd.ending_name}", 累计胜场=${fullCampaignEnd.combat.victories}`,
+    );
+
     console.log('========================================================================');
-    console.log(`  ALL 15/15 PAL3 CAMPAIGN CHECKS PASSED [mode=${mode}]`);
+    console.log(`  ALL 16/16 PAL3 FULL-CAMPAIGN CHECKS PASSED [mode=${mode}]`);
     console.log('========================================================================');
   } finally {
     client.close();

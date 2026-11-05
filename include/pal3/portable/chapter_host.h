@@ -15,6 +15,7 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <istream>
 #include <map>
 #include <memory>
@@ -98,13 +99,14 @@ struct Pal3HostCheckpoint {
 
 struct CampaignCpkSuite {
     std::vector<std::uint8_t> basedata_cpk;
-    std::vector<std::uint8_t> q01_cpk;  // Stage 1: 渝州·永安当与竹林初遇
-    std::vector<std::uint8_t> m01_cpk;  // Stage 2: 璧山双层机关桥与大渡口
-    std::vector<std::uint8_t> q03_cpk;  // Stage 3: 蓬莱码头·安宁村宿营与古藤林
-    std::vector<std::uint8_t> m18_cpk;  // Stage 4: 蜀山锁妖塔·冰风谷滑雪与御剑飞行
-    std::vector<std::uint8_t> m23_cpk;  // Stage 5: 雷州剑冢铸剑抉择与重楼终战
+    std::vector<std::uint8_t> q01_cpk;  // Act I:   渝州·宾化·唐家堡·雷州 (4 Chapters)
+    std::vector<std::uint8_t> m01_cpk;  // Act II:  璧山·九龙坡·大渡口·霹雳堂地牢·九顶山 (5 Chapters)
+    std::vector<std::uint8_t> q03_cpk;  // Act III: 蓬莱·安宁村·古藤林·蜀山无极阁·蛮州灵山 (5 Chapters)
+    std::vector<std::uint8_t> m18_cpk;  // Act IV:  神魔之井·神界·鬼界黄泉·熔岩地狱·锁妖塔·海底城 (6 Chapters)
+    std::vector<std::uint8_t> m23_cpk;  // Act V:   冰风谷·剑冢外围·剑冢铸剑厅·新仙界五大结局 (4 Chapters)
 };
 
+// Builds the complete 24-chapter PAL3 campaign across 6 authentic .cpk archives
 CampaignCpkSuite BuildFullPal3CampaignCpkSuite();
 
 struct ChapterHost final : ISceEngineServices {
@@ -118,6 +120,10 @@ struct ChapterHost final : ISceEngineServices {
                                   std::istream& m18_cpk,
                                   std::istream& m23_cpk);
 
+    // Mounts an original PAL3 retail installation directory (`basedata/basedata.cpk` + `scene/*.cpk`)
+    // for on-demand dynamic loading of any original `.cpk`/`.scn`/`.sce`/`.nav`/`.pol` archive.
+    bool MountOriginalGameDirectory(const std::filesystem::path& game_dir);
+
     void BeginNewGame();
     void StepFrames(std::uint32_t frames = 1, float dt_sec = 1.0f / 60.0f);
 
@@ -130,6 +136,7 @@ struct ChapterHost final : ISceEngineServices {
     std::string SwitchLeader(std::int32_t role_id);
     std::string ToggleLongkuiForm();
     std::string PurifyDemonSword(Pal3Element element);
+    std::string EvaluateEndingName() const;
     CombatTurnOutcome ExecuteCombatAction(std::string_view action_kind,
                                           std::uint32_t skill_or_item_id = 0,
                                           std::uint32_t target_enemy_slot = 0,
@@ -184,6 +191,7 @@ struct ChapterHost final : ISceEngineServices {
     std::int32_t SceGetLastCombatResult() const override { return combat.LastCombatResult(); }
 
     void SceStartAppraisalMinigame(std::uint32_t antique_id) override;
+    void SceStartPawnshopMinigame(std::uint32_t shop_id) override;
     std::int32_t SceGetLastAppraisalResult() const override { return minigames.LastAppraisalResult(); }
     void SceStartEncampmentMinigame(std::uint32_t encamp_id) override;
     void SceStartSkiMinigame(std::uint32_t course_id) override;
@@ -200,6 +208,7 @@ struct ChapterHost final : ISceEngineServices {
 
     struct LoadedSceneBundle {
         std::string title;
+        std::uint32_t init_proc_id{1};
         ScnFile scn;
         NavFile nav;
         SceFile sce;
@@ -208,6 +217,7 @@ struct ChapterHost final : ISceEngineServices {
     };
     std::map<std::string, LoadedSceneBundle> scene_catalog;
     std::map<std::string, Mv3Model> role_mv3_models;
+    std::filesystem::path original_game_dir;
 
     std::string current_cpk{"q01"};
     std::string current_scn{"yn01a"};
@@ -248,11 +258,12 @@ struct ChapterHost final : ISceEngineServices {
     EvaluatedMv3Pose leader_mv3_pose;
     float animation_clock_sec{0.0f};
     std::uint64_t total_frames{0};
-    std::uint32_t total_draw_calls{0};
+    std::uint64_t total_draw_calls{0};
 
 private:
     void RebuildCollisionAndSceneForLayer(std::uint32_t layer);
     bool CheckAndFireStepTriggers();
+    bool TryLoadSceneFromOriginalGameDir(std::string_view cpk_name, std::string_view scn_name);
 };
 
 }  // namespace pal3::portable

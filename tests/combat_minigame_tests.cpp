@@ -72,6 +72,19 @@ int main() {
     const auto fly = mg.SubmitAction("fly", 4, "m23", party, favor, inventory, money);
     assert(fly.completed && fly.trigger_load_cpk == "m23");
 
+    // 5. Test 5th PAL3 Minigame (Pawnshop management) & 2nd Antique (Celadon Lotus Bowl)
+    const int money_before = money;
+    mg.StartPawnshop(1);
+    const auto pawn = mg.SubmitAction("deal", 2, "", party, favor, inventory, money);
+    assert(pawn.completed && pawn.success);
+    assert(money == money_before + 800);
+    assert(mg.State().pawnshops_completed == 1u);
+
+    mg.StartAppraisal(2);
+    const auto appr2 = mg.SubmitAction("inspect", 2, "", party, favor, inventory, money);
+    assert(appr2.completed && appr2.success);
+    assert(inventory[6202] == 1);
+
     std::cout << "[PASS] pal3_portable_combat_minigame_tests\n";
     return 0;
 }

@@ -194,7 +194,13 @@ struct AgentPal3Session {
             << "\"zhenyaojian_obtained\":" << (host.demon_sword.zhenyaojian_obtained ? "true" : "false") << ","
             << "\"equipped_divine_sword\":\"" << EscapeJson(host.demon_sword.equipped_divine_sword) << "\","
             << "\"purification_level\":" << host.demon_sword.purification_level << ","
-            << "\"spirit_atk_bonus\":" << host.demon_sword.spirit_atk_bonus << "},";
+            << "\"spirit_atk_bonus\":" << host.demon_sword.spirit_atk_bonus << ","
+            << "\"infused_elements\":[";
+        for (std::size_t i = 0; i < host.demon_sword.infused_elements.size(); ++i) {
+            if (i > 0) out << ",";
+            out << "\"" << Pal3ElementName(host.demon_sword.infused_elements[i]) << "\"";
+        }
+        out << "]},";
 
         out << "\"inventory\":{"
             << "\"money\":" << host.money << ","
@@ -266,13 +272,14 @@ struct AgentPal3Session {
         }
         out << "]},";
 
-        // Minigame state (Appraisal / Encampment / Skiing / YuJian)
+        // Minigame state (Appraisal / Pawnshop / Encampment / Skiing / YuJian)
         const auto& ms = host.minigames.State();
         out << "\"minigame\":{"
             << "\"active\":" << (host.minigames.IsActive() ? "true" : "false") << ","
             << "\"kind\":\"" << Pal3MinigameKindName(ms.active_kind) << "\","
             << "\"title\":\"" << EscapeJson(ms.title) << "\","
             << "\"appraisals_passed\":" << ms.appraisals_passed << ","
+            << "\"pawnshops_completed\":" << ms.pawnshops_completed << ","
             << "\"encampments_completed\":" << ms.encampments_completed << ","
             << "\"ski_runs_completed\":" << ms.ski_runs_completed << ","
             << "\"yujian_flights\":" << ms.yujian_flights << "},";
@@ -280,13 +287,15 @@ struct AgentPal3Session {
         if (mode != "pure") {
             out << "\"diagnostics\":{"
                 << "\"sce_run_mode\":" << host.sce_vm->RunMode() << ","
+                << "\"sce_opcodes_registered\":" << RegisteredSceOpcodeCount() << ","
                 << "\"sce_idle\":" << (host.sce_vm->IsIdle() ? "true" : "false") << "},";
         }
 
         out << "\"gles3\":{"
             << "\"frames\":" << host.total_frames << ","
             << "\"draw_calls\":" << host.total_draw_calls << ","
-            << "\"mv3_models_loaded\":" << host.role_mv3_models.size() << "}"
+            << "\"mv3_models_loaded\":" << host.role_mv3_models.size() << ","
+            << "\"chapters_mounted\":" << host.scene_catalog.size() << "}"
             << "}";
         return out.str();
     }
@@ -414,6 +423,12 @@ struct AgentPal3Session {
                 last_event = "story_var_set:" + std::to_string(val);
                 return BuildObservationJson(true);
             }
+            if (cmd == "mount_game_dir") {
+                const std::string dir = ExtractJsonString(line, "path").value_or("");
+                const bool mounted = host.MountOriginalGameDirectory(dir);
+                last_event = mounted ? ("mounted_game_dir:" + dir) : "mount_game_dir_failed";
+                return BuildObservationJson(mounted, mounted ? "" : "game_dir does not exist");
+            }
             return BuildObservationJson(false, "unknown command: " + cmd);
         } catch (const std::exception& ex) {
             return BuildObservationJson(false, ex.what());
@@ -425,16 +440,22 @@ struct AgentPal3Session {
 
 int main(int argc, char** argv) {
     AgentPal3Session session;
+    std::filesystem::path game_dir;
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg = argv[i];
         if (arg == "--work-dir" && i + 1 < argc) {
             session.work_dir = argv[++i];
         } else if (arg == "--mode" && i + 1 < argc) {
             session.mode = argv[++i];
+        } else if (arg == "--game-dir" && i + 1 < argc) {
+            game_dir = argv[++i];
         }
     }
 
     session.WriteAndLoadCpkSuite();
+    if (!game_dir.empty()) {
+        session.host.MountOriginalGameDirectory(game_dir);
+    }
 
     std::string line;
     while (std::getline(std::cin, line)) {

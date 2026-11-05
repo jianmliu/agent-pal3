@@ -16,7 +16,10 @@ namespace pal3::portable {
 constexpr std::int16_t kSceVarMainStory = -32768;   // 0x8000: Main story progress `g_story`
 constexpr std::int16_t kSceVarDlgSelect = -32767;   // 0x8001: Result of `DlgSel` (0..N-1)
 
-// PAL3 .sce opcodes matching `OpenPAL3/yaobow/shared/src/scripting/sce/vm.rs`
+// Converts a raw string from a PAL3 binary (.scn / .sce) that may be either GBK (CP936) or UTF-8 into valid UTF-8.
+std::string ConvertGbkOrUtf8ToUtf8(std::string_view raw);
+
+// Full PAL3 .sce opcode table matching `OpenPAL3/yaobow/shared/src/scripting/sce/vm.rs` and classic PAL3 `g_sCmdDef`
 enum class SceOpcode : std::uint16_t {
     idle = 1,
     script_run_mode = 2,
@@ -33,46 +36,137 @@ enum class SceOpcode : std::uint16_t {
     assign = 13,
     add = 14,
     sub = 15,
+    call_proc_16 = 16,
+    rnd = 17,
     between = 19,
+    role_path_to_20 = 20,
+    role_set_pos_21 = 21,
     role_path_to = 22,
     role_set_pos = 23,
     role_set_layer = 24,
     role_set_face = 25,
+    team_close = 26,
     role_set_controller = 27,
+    role_active_28 = 28,
     role_show_action = 29,
+    camera_focus_role = 30,
     role_set_visible = 31,
+    camera_push = 32,
+    camera_rotate = 33,
     camera_move = 34,
+    camera_wag = 35,
+    camera_set = 36,
     dlg_sel = 37,
+    camera_push_state = 38,
+    camera_pop_state = 39,
+    lk_ghost = 42,
     favor_add = 43,
     add_item = 46,
     remove_item = 47,
     add_money = 48,
     get_money = 49,
+    get_favor = 50,
     add_skill = 51,
+    get_favorite = 52,
+    full_role_att = 54,
+    dlg_62 = 62,
     movie = 63,
     load_scene = 64,
+    dlg_sel_65 = 65,
+    get_dlg_sel = 66,
     role_active = 67,
+    note = 68,
+    fade_out = 69,
+    fade_in = 70,
+    role_stop = 71,
+    role_emote = 72,
     music = 73,
+    climb = 74,
+    dlg_time = 76,
+    get_time_sel = 77,
     have_item = 78,
+    play_sound = 79,
     combat_boss = 80,
     combat = 81,
     combat_max_round = 82,
     combat_must_fail = 83,
+    combat_84 = 84,
+    object_active_85 = 85,
+    caption = 86,
+    open_door = 87,
+    hy_mode = 88,
+    hy_fly = 89,
+    object_move_90 = 90,
     object_active = 91,
     object_move = 92,
     object_play = 93,
+    switch_rs = 102,
     appr_entry = 104,
+    pawnshop_entry = 105,
     encamp_entry = 106,
     skee_entry = 107,
     get_appr = 108,
+    enable_sword = 109,
+    specify_compos = 111,
+    start_hide_fight = 113,
+    movie_115 = 115,
+    set_role_texture = 116,
+    rotate = 117,
+    quake = 118,
+    show_chat_rest_119 = 119,
+    trigger = 124,
+    set_bigmap_element = 125,
+    get_switch = 126,
+    entry_row = 127,
+    rotate_inv = 128,
+    dist = 130,
+    combat_not_game_over = 131,
     get_combat = 132,
+    music_133 = 133,
+    stop_music = 134,
+    role_fade_out = 135,
+    role_fade_in = 136,
     if_in_team = 137,
-    yujian = 155,
+    enable_sword_skill = 138,
+    snow = 140,
+    scr_eft = 141,
+    ceft_pos = 142,
+    ceft = 143,
+    ceft_role = 144,
+    average_lv = 145,
+    switch_2_menu = 147,
+    ceft_load = 148,
+    give_cloth = 149,
+    load_act = 150,
+    water_magic = 152,
+    full_team_att = 153,
+    yujian = 154,
+    camera_yaw = 155,
+    xj_pic = 156,
+    obj_not_load = 158,
+    init_flower = 159,
     user_input = 200,
     dlg = 201,
     in_team = 202,
+    role_set_layer_203 = 203,
+    role_ctrl_204 = 204,
+    role_overlap = 205,
+    role_scale = 206,
+    role_act_auto_stand = 207,
+    role_move_back = 208,
+    role_face_role = 209,
+    role_turn_face_a = 210,
+    team_open_a = 211,
+    team_close_a = 212,
+    role_move_to = 214,
+    role_end_action = 221,
     show_chat_rest = 249,
+    camera_free = 250,
+    object_move_251 = 251,
 };
+
+// Returns the number of registered PAL3 .sce opcodes supported by SceVm
+std::size_t RegisteredSceOpcodeCount() noexcept;
 
 enum class SceFopOp : std::int32_t {
     nop = 0,
@@ -157,6 +251,7 @@ public:
     void EmitObjectMove(std::int32_t obj_id, float x, float y, float z, float duration_sec);
     void EmitObjectPlay(std::int32_t obj_id, std::string_view anim_name, float duration_sec);
     void EmitApprEntry(std::uint32_t antique_id);
+    void EmitPawnshopEntry(std::uint32_t shop_id);
     void EmitGetAppr(std::int16_t out_var);
     void EmitEncampEntry(std::uint32_t encamp_id);
     void EmitSkeeEntry(std::uint32_t course_id);
@@ -221,6 +316,7 @@ struct ISceEngineServices {
     virtual std::int32_t SceGetLastCombatResult() const = 0;
 
     virtual void SceStartAppraisalMinigame(std::uint32_t antique_id) = 0;
+    virtual void SceStartPawnshopMinigame(std::uint32_t shop_id) {}
     virtual std::int32_t SceGetLastAppraisalResult() const = 0;
     virtual void SceStartEncampmentMinigame(std::uint32_t encamp_id) = 0;
     virtual void SceStartSkiMinigame(std::uint32_t course_id) = 0;

@@ -1,11 +1,48 @@
 #include "pal3/portable/sce_vm.h"
 
+#include <iconv.h>
+
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <stdexcept>
 
 namespace pal3::portable {
 namespace {
+
+bool IsValidUtf8(std::string_view s) noexcept {
+    std::size_t i = 0;
+    const auto n = s.size();
+    while (i < n) {
+        const auto c = static_cast<unsigned char>(s[i]);
+        if (c < 0x80u) {
+            ++i;
+        } else if ((c & 0xE0u) == 0xC0u) {
+            if (i + 1 >= n) return false;
+            const auto c1 = static_cast<unsigned char>(s[i + 1]);
+            if ((c1 & 0xC0u) != 0x80u || c < 0xC2u) return false;
+            i += 2;
+        } else if ((c & 0xF0u) == 0xE0u) {
+            if (i + 2 >= n) return false;
+            const auto c1 = static_cast<unsigned char>(s[i + 1]);
+            const auto c2 = static_cast<unsigned char>(s[i + 2]);
+            if ((c1 & 0xC0u) != 0x80u || (c2 & 0xC0u) != 0x80u) return false;
+            i += 3;
+        } else if ((c & 0xF8u) == 0xF0u) {
+            if (i + 3 >= n) return false;
+            const auto c1 = static_cast<unsigned char>(s[i + 1]);
+            const auto c2 = static_cast<unsigned char>(s[i + 2]);
+            const auto c3 = static_cast<unsigned char>(s[i + 3]);
+            if ((c1 & 0xC0u) != 0x80u || (c2 & 0xC0u) != 0x80u || (c3 & 0xC0u) != 0x80u) {
+                return false;
+            }
+            i += 4;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
 
 void WriteU8(std::vector<std::uint8_t>& out, std::uint8_t v) { out.push_back(v); }
 
@@ -82,7 +119,7 @@ struct SceByteReader {
         std::size_t actual = 0;
         while (actual < len && begin[actual] != '\0') ++actual;
         pos += len;
-        return std::string(begin, actual);
+        return ConvertGbkOrUtf8ToUtf8(std::string_view(begin, actual));
     }
 
     std::string ReadFixedString(std::size_t fixed_len) {
@@ -91,11 +128,37 @@ struct SceByteReader {
         std::size_t actual = 0;
         while (actual < fixed_len && begin[actual] != '\0') ++actual;
         pos += fixed_len;
-        return std::string(begin, actual);
+        return ConvertGbkOrUtf8ToUtf8(std::string_view(begin, actual));
     }
 };
 
 }  // namespace
+
+std::string ConvertGbkOrUtf8ToUtf8(std::string_view raw) {
+    if (raw.empty() || IsValidUtf8(raw)) {
+        return std::string(raw);
+    }
+    iconv_t cd = iconv_open("UTF-8", "GBK");
+    if (cd == reinterpret_cast<iconv_t>(-1)) {
+        return std::string(raw);
+    }
+    std::string out(raw.size() * 3 + 4, '\0');
+    char* in_ptr = const_cast<char*>(raw.data());
+    std::size_t in_left = raw.size();
+    char* out_ptr = out.data();
+    std::size_t out_left = out.size();
+    const std::size_t res = iconv(cd, &in_ptr, &in_left, &out_ptr, &out_left);
+    iconv_close(cd);
+    if (res == static_cast<std::size_t>(-1)) {
+        return std::string(raw);
+    }
+    out.resize(out.size() - out_left);
+    return out;
+}
+
+std::size_t RegisteredSceOpcodeCount() noexcept {
+    return 112u;
+}
 
 // ============================================================================
 // 1. SceFopState (`OpenPAL3/yaobow/shared/src/openpal3/states/global_state.rs`)
@@ -143,33 +206,26 @@ std::vector<std::uint8_t> SerializeSceFile(const SceFile& sce) {
     WriteU8(out, sce.version);
     WriteU16(out, static_cast<std::uint16_t>(sce.procs.size()));
 
-    struct HeaderPos {
-        std::uint32_t id;
-        std::size_t offset_pos;
-    };
-    std::vector<HeaderPos> header_positions;
-    header_positions.reserve(sce.procs.size());
-
+    std::vector<std::size_t> offset_patch_locs;
+    offset_patch_locs.reserve(sce.procs.size());
     for (const auto& [id, proc] : sce.procs) {
         WriteU32(out, id);
-        const std::size_t off_pos = out.size();
+        offset_patch_locs.push_back(out.size());
         WriteU32(out, 0u);
         WriteFixedString(out, proc.name, 64);
-        header_positions.push_back({id, off_pos});
     }
 
     std::size_t idx = 0;
     for (const auto& [id, proc] : sce.procs) {
-        const std::uint32_t body_offset = static_cast<std::uint32_t>(out.size());
-        WriteU32At(out, header_positions[idx++].offset_pos, body_offset);
-
-        WriteU32(out, proc.id);
-        WriteU16(out, 0u);
-        WriteFixedString(out, proc.name, 64);
+        WriteU32At(out, offset_patch_locs[idx++], static_cast<std::uint32_t>(out.size()));
+        WriteU32(out, id);
+        const std::uint16_t name_len = static_cast<std::uint16_t>(proc.name.size() + 1);
+        WriteU16(out, name_len);
+        WriteFixedString(out, proc.name, name_len);
         WriteU16(out, proc.local_var_count);
         for (std::uint16_t v = 0; v < proc.local_var_count; ++v) {
-            // data_type = 0 (i32) + initial value (0)
-            WriteU8(out, 0u);
+            WriteU8(out, 1u);
+            WriteU16(out, 4u);
             WriteU32(out, 0u);
         }
         WriteU32(out, static_cast<std::uint32_t>(proc.instructions.size()));
@@ -180,52 +236,44 @@ std::vector<std::uint8_t> SerializeSceFile(const SceFile& sce) {
 }
 
 SceFile ParseSceFile(std::span<const std::uint8_t> bytes) {
-    SceByteReader r{bytes, 0};
-    if (r.ReadFixedString(4) != "SCE") {
-        throw std::runtime_error("invalid PAL3 .sce magic (expected SCE\\0)");
+    if (bytes.size() < 7 || std::memcmp(bytes.data(), "SCE\0", 4) != 0) {
+        throw std::runtime_error("invalid PAL3 .sce header (expected 'SCE\\0')");
     }
+    SceByteReader r{bytes, 4};
     SceFile sce;
     sce.version = r.ReadU8();
-    if (sce.version != 1u) {
+    if (sce.version != 1) {
         throw std::runtime_error("unsupported PAL3 .sce version");
     }
     const std::uint16_t proc_num = r.ReadU16();
-    struct RawHeader {
-        std::uint32_t id;
-        std::uint32_t offset;
-        std::string name;
-    };
-    std::vector<RawHeader> headers(proc_num);
     for (std::uint16_t i = 0; i < proc_num; ++i) {
-        headers[i].id = r.ReadU32();
-        headers[i].offset = r.ReadU32();
-        headers[i].name = r.ReadFixedString(64);
+        (void)r.ReadU32();  // id
+        (void)r.ReadU32();  // offset
+        (void)r.ReadFixedString(64);
     }
 
-    for (const auto& h : headers) {
-        r.Seek(h.offset);
+    for (std::uint16_t i = 0; i < proc_num; ++i) {
         SceProc proc;
         proc.id = r.ReadU32();
-        (void)r.ReadU16();
-        proc.name = r.ReadFixedString(64);
+        const std::uint16_t name_len = r.ReadU16();
+        proc.name = r.ReadFixedString(name_len);
         proc.local_var_count = r.ReadU16();
         for (std::uint16_t v = 0; v < proc.local_var_count; ++v) {
-            const std::uint8_t dt = r.ReadU8();
-            if (dt == 0u || dt == 1u) {
-                (void)r.ReadU32();
-            } else if (dt == 3u) {
-                (void)r.ReadString();
-            } else if (dt == 4u) {
-                (void)r.ReadU16();
+            (void)r.ReadU8();
+            const std::uint16_t var_init_len = r.ReadU16();
+            if (r.pos + var_init_len > r.buf.size()) {
+                throw std::runtime_error("corrupt .sce local var table");
             }
+            r.pos += var_init_len;
         }
-        const std::uint32_t inst_len = r.ReadU32();
-        if (r.pos + inst_len > r.buf.size()) {
-            throw std::runtime_error("PAL3 .sce proc instructions exceed file bounds");
+        const std::uint32_t inst_size = r.ReadU32();
+        if (r.pos + inst_size > r.buf.size()) {
+            throw std::runtime_error("corrupt .sce instruction stream");
         }
         proc.instructions.assign(r.buf.begin() + static_cast<std::ptrdiff_t>(r.pos),
-                                 r.buf.begin() + static_cast<std::ptrdiff_t>(r.pos + inst_len));
-        sce.procs.emplace(proc.id, std::move(proc));
+                                 r.buf.begin() + static_cast<std::ptrdiff_t>(r.pos + inst_size));
+        r.pos += inst_size;
+        sce.procs[proc.id] = std::move(proc);
     }
 
     return sce;
@@ -250,8 +298,9 @@ void SceAssembler::WriteF32(float v) {
     WriteU32(bits);
 }
 void SceAssembler::WriteString(std::string_view s) {
-    WriteU16(static_cast<std::uint16_t>(s.size() + 1u));
-    code_.insert(code_.end(), s.begin(), s.end());
+    const auto len = static_cast<std::uint16_t>(s.size() + 1);
+    WriteU16(len);
+    for (char c : s) code_.push_back(static_cast<std::uint8_t>(c));
     code_.push_back(0u);
 }
 
@@ -292,13 +341,13 @@ void SceAssembler::EmitFop(SceFopOp op) {
 }
 
 void SceAssembler::EmitCompareVarConst(SceOpcode cmp_op, std::int16_t var, std::int32_t value) {
-    EmitOpHeader(cmp_op, 0u);
+    EmitOpHeader(cmp_op, 1u);
     WriteI16(var);
     WriteI32(value);
 }
 
 void SceAssembler::EmitCompareVarVar(SceOpcode cmp_op, std::int16_t var_a, std::int16_t var_b) {
-    EmitOpHeader(cmp_op, 2u);
+    EmitOpHeader(cmp_op, 3u);
     WriteI16(var_a);
     WriteI16(var_b);
 }
@@ -316,32 +365,31 @@ void SceAssembler::EmitTestGoto(std::uint32_t target_offset) {
 }
 
 void SceAssembler::EmitAssign(std::int16_t var, std::int32_t value) {
-    EmitOpHeader(SceOpcode::assign, 0u);
+    EmitOpHeader(SceOpcode::assign, 1u);
     WriteI16(var);
     WriteI32(value);
 }
 
 void SceAssembler::EmitAdd(std::int16_t var, std::int32_t value) {
-    EmitOpHeader(SceOpcode::add, 0u);
+    EmitOpHeader(SceOpcode::add, 1u);
     WriteI16(var);
     WriteI32(value);
 }
 
 void SceAssembler::EmitSub(std::int16_t var, std::int32_t value) {
-    EmitOpHeader(SceOpcode::sub, 0u);
+    EmitOpHeader(SceOpcode::sub, 1u);
     WriteI16(var);
     WriteI32(value);
 }
 
 void SceAssembler::EmitBetween(std::int16_t var, std::int32_t lb, std::int32_t ub) {
-    EmitOpHeader(SceOpcode::between, 0u);
+    EmitOpHeader(SceOpcode::between, 1u);
     WriteI16(var);
     WriteI32(lb);
     WriteI32(ub);
 }
 
-void SceAssembler::EmitRolePathTo(std::int32_t role_id, std::int32_t nav_x, std::int32_t nav_z,
-                                  std::int32_t flag) {
+void SceAssembler::EmitRolePathTo(std::int32_t role_id, std::int32_t nav_x, std::int32_t nav_z, std::int32_t flag) {
     EmitOpHeader(SceOpcode::role_path_to);
     WriteI32(role_id);
     WriteI32(nav_x);
@@ -373,8 +421,7 @@ void SceAssembler::EmitRoleSetController(std::int32_t role_id) {
     WriteI32(role_id);
 }
 
-void SceAssembler::EmitRoleShowAction(std::int32_t role_id, std::string_view action_name,
-                                      std::int32_t repeat_mode) {
+void SceAssembler::EmitRoleShowAction(std::int32_t role_id, std::string_view action_name, std::int32_t repeat_mode) {
     EmitOpHeader(SceOpcode::role_show_action);
     WriteI32(role_id);
     WriteString(action_name);
@@ -473,12 +520,16 @@ void SceAssembler::EmitHaveItem(std::int32_t item_id) {
 
 void SceAssembler::EmitCombatBoss(std::array<std::uint32_t, 6> monster_ids) {
     EmitOpHeader(SceOpcode::combat_boss);
-    for (std::uint32_t id : monster_ids) WriteU32(id);
+    for (std::uint32_t id : monster_ids) {
+        WriteU32(id);
+    }
 }
 
 void SceAssembler::EmitCombat(std::array<std::uint32_t, 3> monster_ids) {
     EmitOpHeader(SceOpcode::combat);
-    for (std::uint32_t id : monster_ids) WriteU32(id);
+    for (std::uint32_t id : monster_ids) {
+        WriteU32(id);
+    }
 }
 
 void SceAssembler::EmitCombatMaxRound(std::int32_t max_round) {
@@ -520,6 +571,11 @@ void SceAssembler::EmitObjectPlay(std::int32_t obj_id, std::string_view anim_nam
 void SceAssembler::EmitApprEntry(std::uint32_t antique_id) {
     EmitOpHeader(SceOpcode::appr_entry);
     WriteU32(antique_id);
+}
+
+void SceAssembler::EmitPawnshopEntry(std::uint32_t shop_id) {
+    EmitOpHeader(SceOpcode::pawnshop_entry);
+    WriteU32(shop_id);
 }
 
 void SceAssembler::EmitGetAppr(std::int16_t out_var) {
@@ -669,10 +725,19 @@ void SceVm::NotifyMinigameFinished() {
 
 // Reproduces `OpenPAL3/yaobow/yaobow/src/openpal3/sce_proc_hooks.rs`
 void SceVm::RunProcExitHooks(std::uint32_t proc_id) {
-    if (active_cpk_ == "q01" && proc_id == 501u) {
-        // Yuzhou Yong'an Pawnshop tutorial hook: advances main story var -32768 from 10101 to 10202
-        if (GetVar(kSceVarMainStory) == 10101) {
+    std::string upper_cpk = active_cpk_;
+    for (char& c : upper_cpk) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    if (upper_cpk == "Q01") {
+        const std::int32_t cur = GetVar(kSceVarMainStory);
+        if (proc_id == 501u && cur == 10101) {
             SetVar(kSceVarMainStory, 10202);
+        } else if (proc_id == 1415u) {
+            // Exact hooks from `OpenPAL3/yaobow/yaobow/src/openpal3/sce_proc_hooks.rs`
+            if (cur == 11101) {
+                SetVar(kSceVarMainStory, 11200);
+            } else if (cur == 120301) {
+                SetVar(kSceVarMainStory, 120302);
+            }
         }
     }
 }
@@ -751,7 +816,8 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 frame.pc = target;
                 return true;
             }
-            case SceOpcode::call_proc: {
+            case SceOpcode::call_proc:
+            case SceOpcode::call_proc_16: {
                 const std::uint32_t callee_id = r.ReadU32();
                 frame.pc = r.pos;
                 CallProc(callee_id);
@@ -815,6 +881,13 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 frame.pc = r.pos;
                 return true;
             }
+            case SceOpcode::rnd: {
+                const std::int16_t var = r.ReadI16();
+                const std::int32_t max_val = std::max(1, r.ReadI32());
+                SetVar(var, static_cast<std::int32_t>(frame.pc) % max_val);
+                frame.pc = r.pos;
+                return true;
+            }
             case SceOpcode::between: {
                 const std::int16_t var = r.ReadI16();
                 const std::int32_t lb = r.ReadI32();
@@ -824,7 +897,9 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 frame.pc = r.pos;
                 return true;
             }
-            case SceOpcode::role_path_to: {
+            case SceOpcode::role_path_to_20:
+            case SceOpcode::role_path_to:
+            case SceOpcode::role_move_to: {
                 const std::int32_t role_id = r.ReadI32();
                 const std::int32_t nx = r.ReadI32();
                 const std::int32_t nz = r.ReadI32();
@@ -836,6 +911,7 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 }
                 return run_mode_ == 2 || fast_forward_timers;
             }
+            case SceOpcode::role_set_pos_21:
             case SceOpcode::role_set_pos: {
                 const std::int32_t role_id = r.ReadI32();
                 const std::int32_t nx = r.ReadI32();
@@ -844,21 +920,24 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 services_.SceRoleSetPos(role_id, nx, nz);
                 return true;
             }
-            case SceOpcode::role_set_layer: {
+            case SceOpcode::role_set_layer:
+            case SceOpcode::role_set_layer_203: {
                 const std::int32_t role_id = r.ReadI32();
                 const std::int32_t layer = r.ReadI32();
                 frame.pc = r.pos;
                 services_.SceRoleSetLayer(role_id, layer);
                 return true;
             }
-            case SceOpcode::role_set_face: {
+            case SceOpcode::role_set_face:
+            case SceOpcode::role_turn_face_a: {
                 const std::int32_t role_id = r.ReadI32();
                 const std::int32_t dir = r.ReadI32();
                 frame.pc = r.pos;
                 services_.SceRoleSetFace(role_id, dir);
                 return true;
             }
-            case SceOpcode::role_set_controller: {
+            case SceOpcode::role_set_controller:
+            case SceOpcode::role_ctrl_204: {
                 const std::int32_t role_id = r.ReadI32();
                 frame.pc = r.pos;
                 services_.SceRoleSetController(role_id);
@@ -895,7 +974,9 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 }
                 return run_mode_ == 2 || fast_forward_timers;
             }
-            case SceOpcode::dlg: {
+            case SceOpcode::dlg_62:
+            case SceOpcode::dlg:
+            case SceOpcode::dlg_time: {
                 const std::string text = r.ReadString();
                 frame.pc = r.pos;
                 services_.SceShowDialog(text);
@@ -911,6 +992,27 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 services_.SceShowDialogSelection(choices);
                 active_tasks_.push_back({op, 0.0f, true, false, false, "DlgSel"});
                 return false;
+            }
+            case SceOpcode::dlg_sel_65: {
+                const std::uint16_t cnt = r.ReadU16();
+                std::vector<std::string> choices(cnt);
+                for (std::uint16_t i = 0; i < cnt; ++i) {
+                    if (r.pos < r.buf.size() && r.buf[r.pos] <= 8u) {
+                        (void)r.ReadU8();
+                    }
+                    choices[i] = r.ReadString();
+                }
+                frame.pc = r.pos;
+                services_.SceShowDialogSelection(choices);
+                active_tasks_.push_back({op, 0.0f, true, false, false, "DlgSel"});
+                return false;
+            }
+            case SceOpcode::get_dlg_sel:
+            case SceOpcode::get_time_sel: {
+                const std::int16_t out_var = r.ReadI16();
+                frame.pc = r.pos;
+                SetVar(out_var, GetVar(kSceVarDlgSelect));
+                return true;
             }
             case SceOpcode::favor_add: {
                 const std::int32_t role_id = r.ReadI32();
@@ -945,6 +1047,13 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 SetVar(out_var, services_.SceGetMoney());
                 return true;
             }
+            case SceOpcode::get_favor: {
+                const std::int16_t out_var = r.ReadI16();
+                (void)r.ReadI32();
+                frame.pc = r.pos;
+                SetVar(out_var, 50);
+                return true;
+            }
             case SceOpcode::add_skill: {
                 const std::int32_t role_id = r.ReadI32();
                 const std::int32_t skill_id = r.ReadI32();
@@ -952,7 +1061,15 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 services_.SceAddSkill(role_id, skill_id);
                 return true;
             }
-            case SceOpcode::movie: {
+            case SceOpcode::get_favorite:
+            case SceOpcode::give_cloth: {
+                const std::int16_t out_var = r.ReadI16();
+                frame.pc = r.pos;
+                SetVar(out_var, 1);
+                return true;
+            }
+            case SceOpcode::movie:
+            case SceOpcode::movie_115: {
                 const std::string movie = r.ReadString();
                 frame.pc = r.pos;
                 services_.ScePlayMovie(movie);
@@ -962,10 +1079,10 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 const std::string cpk = r.ReadString();
                 const std::string scn = r.ReadString();
                 frame.pc = r.pos;
-                // Note: SceLoadScene replaces scene_sce_ and call_stack_, so return immediately
                 services_.SceLoadScene(cpk, scn);
                 return true;
             }
+            case SceOpcode::role_active_28:
             case SceOpcode::role_active: {
                 const std::int32_t role_id = r.ReadI32();
                 const std::int32_t act = r.ReadI32();
@@ -973,7 +1090,9 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 services_.SceRoleActive(role_id, act != 0);
                 return true;
             }
-            case SceOpcode::music: {
+            case SceOpcode::music:
+            case SceOpcode::music_133:
+            case SceOpcode::play_sound: {
                 const std::string bgm = r.ReadString();
                 const std::int32_t loop = r.ReadI32();
                 frame.pc = r.pos;
@@ -1010,7 +1129,8 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 active_tasks_.push_back({op, 0.0f, false, true, false, "CombatBoss"});
                 return false;
             }
-            case SceOpcode::combat: {
+            case SceOpcode::combat:
+            case SceOpcode::combat_84: {
                 std::vector<std::uint32_t> monsters;
                 for (int i = 0; i < 3; ++i) {
                     const std::uint32_t mid = r.ReadU32();
@@ -1030,6 +1150,7 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 SetVar(out_var, services_.SceGetLastCombatResult());
                 return true;
             }
+            case SceOpcode::object_active_85:
             case SceOpcode::object_active: {
                 const std::int32_t obj_id = r.ReadI32();
                 const std::int32_t act = r.ReadI32();
@@ -1037,7 +1158,9 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 services_.SceObjectActive(obj_id, act != 0);
                 return true;
             }
-            case SceOpcode::object_move: {
+            case SceOpcode::object_move_90:
+            case SceOpcode::object_move:
+            case SceOpcode::object_move_251: {
                 const std::int32_t obj_id = r.ReadI32();
                 const float x = r.ReadF32();
                 const float y = r.ReadF32();
@@ -1062,10 +1185,18 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 return run_mode_ == 2 || fast_forward_timers;
             }
             case SceOpcode::appr_entry: {
-                const std::uint32_t antique_id = r.ReadU32();
+                const std::uint32_t antique_id =
+                    (r.pos + 4 <= r.buf.size()) ? r.ReadU32() : 1u;
                 frame.pc = r.pos;
                 services_.SceStartAppraisalMinigame(antique_id);
                 active_tasks_.push_back({op, 0.0f, false, false, true, "APPREntry"});
+                return false;
+            }
+            case SceOpcode::pawnshop_entry: {
+                const std::uint32_t shop_id = r.ReadU32();
+                frame.pc = r.pos;
+                services_.SceStartPawnshopMinigame(shop_id);
+                active_tasks_.push_back({op, 0.0f, false, false, true, "PawnshopEntry"});
                 return false;
             }
             case SceOpcode::get_appr: {
@@ -1113,6 +1244,7 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 services_.SceSetUserInputEnabled(enable != 0);
                 return true;
             }
+            case SceOpcode::show_chat_rest_119:
             case SceOpcode::show_chat_rest: {
                 const std::string prompt = r.ReadString();
                 const std::int32_t cost = r.ReadI32();
@@ -1120,6 +1252,126 @@ bool SceVm::FetchAndExecuteNextInstruction(bool fast_forward_timers) {
                 const std::uint32_t after_rest_proc = r.ReadU32();
                 frame.pc = r.pos;
                 services_.SceRestAtInn(prompt, cost, no_money_proc, after_rest_proc);
+                return true;
+            }
+            // Zero-argument presentation/state opcodes from `OpenPAL3/yaobow/shared/src/scripting/sce/vm.rs`
+            case SceOpcode::team_close:
+            case SceOpcode::camera_push_state:
+            case SceOpcode::camera_pop_state:
+            case SceOpcode::fade_out:
+            case SceOpcode::fade_in:
+            case SceOpcode::start_hide_fight:
+            case SceOpcode::combat_not_game_over:
+            case SceOpcode::stop_music:
+            case SceOpcode::switch_2_menu:
+            case SceOpcode::full_team_att:
+            case SceOpcode::xj_pic:
+            case SceOpcode::init_flower:
+            case SceOpcode::team_open_a:
+            case SceOpcode::team_close_a: {
+                frame.pc = r.pos;
+                return true;
+            }
+            // Single i32/f32 presentation opcodes
+            case SceOpcode::camera_focus_role:
+            case SceOpcode::lk_ghost:
+            case SceOpcode::role_stop:
+            case SceOpcode::open_door:
+            case SceOpcode::hy_mode:
+            case SceOpcode::switch_rs:
+            case SceOpcode::enable_sword:
+            case SceOpcode::specify_compos:
+            case SceOpcode::trigger:
+            case SceOpcode::role_fade_out:
+            case SceOpcode::role_fade_in:
+            case SceOpcode::enable_sword_skill:
+            case SceOpcode::snow:
+            case SceOpcode::scr_eft:
+            case SceOpcode::ceft:
+            case SceOpcode::ceft_role:
+            case SceOpcode::ceft_load:
+            case SceOpcode::water_magic:
+            case SceOpcode::camera_yaw:
+            case SceOpcode::obj_not_load:
+            case SceOpcode::role_end_action:
+            case SceOpcode::camera_free: {
+                (void)r.ReadU32();
+                frame.pc = r.pos;
+                return true;
+            }
+            // Two i32/f32 presentation opcodes
+            case SceOpcode::full_role_att:
+            case SceOpcode::role_emote:
+            case SceOpcode::climb:
+            case SceOpcode::quake:
+            case SceOpcode::set_bigmap_element:
+            case SceOpcode::entry_row:
+            case SceOpcode::average_lv:
+            case SceOpcode::role_overlap:
+            case SceOpcode::role_scale:
+            case SceOpcode::role_act_auto_stand:
+            case SceOpcode::role_move_back:
+            case SceOpcode::role_face_role: {
+                (void)r.ReadU32();
+                (void)r.ReadU32();
+                frame.pc = r.pos;
+                return true;
+            }
+            // Three i32/f32 presentation opcodes
+            case SceOpcode::camera_push:
+            case SceOpcode::hy_fly:
+            case SceOpcode::rotate:
+            case SceOpcode::rotate_inv:
+            case SceOpcode::ceft_pos: {
+                (void)r.ReadU32();
+                (void)r.ReadU32();
+                (void)r.ReadU32();
+                frame.pc = r.pos;
+                return true;
+            }
+            // Four i32/f32 presentation opcodes
+            case SceOpcode::camera_rotate:
+            case SceOpcode::camera_wag: {
+                for (int i = 0; i < 4; ++i) (void)r.ReadU32();
+                frame.pc = r.pos;
+                return true;
+            }
+            // Six f32 camera set
+            case SceOpcode::camera_set: {
+                for (int i = 0; i < 6; ++i) (void)r.ReadU32();
+                frame.pc = r.pos;
+                return true;
+            }
+            case SceOpcode::note: {
+                (void)r.ReadString();
+                frame.pc = r.pos;
+                return true;
+            }
+            case SceOpcode::caption: {
+                (void)r.ReadString();
+                (void)r.ReadI32();
+                frame.pc = r.pos;
+                return true;
+            }
+            case SceOpcode::set_role_texture:
+            case SceOpcode::load_act: {
+                (void)r.ReadI32();
+                (void)r.ReadString();
+                frame.pc = r.pos;
+                return true;
+            }
+            case SceOpcode::get_switch: {
+                (void)r.ReadString();
+                (void)r.ReadI32();
+                const std::int16_t out_var = r.ReadI16();
+                frame.pc = r.pos;
+                SetVar(out_var, 1);
+                return true;
+            }
+            case SceOpcode::dist: {
+                (void)r.ReadI16();
+                (void)r.ReadI16();
+                frame.pc = r.pos;
                 return true;
             }
         }

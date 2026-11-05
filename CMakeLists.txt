@@ -23,6 +23,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ZLIB REQUIRED)
+find_package(Iconv REQUIRED)
 
 if(NOT TARGET GLESv2)
     add_library(GLESv2 STATIC src/headless_gles3.cpp)
@@ -51,6 +52,7 @@ target_compile_features(pal3_portable_scn_nav_model PUBLIC cxx_std_20)
 # 3. PAL3 .sce Bytecode Script Assembler & Virtual Machine (SceVm, FOP accumulator, serial/parallel run_mode)
 add_library(pal3_portable_sce_vm STATIC src/sce_vm.cpp)
 target_include_directories(pal3_portable_sce_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(pal3_portable_sce_vm PUBLIC Iconv::Iconv)
 target_compile_features(pal3_portable_sce_vm PUBLIC cxx_std_20)
 
 # 4. PAL3 Database, Favorability, Demon Sword & Semi-Realtime ATB + Five-Element Taiji Formation Combat

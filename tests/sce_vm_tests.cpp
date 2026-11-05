@@ -58,6 +58,7 @@ struct MockSceServices final : ISceEngineServices {
     std::int32_t SceGetLastAppraisalResult() const override { return 1; }
     void SceStartEncampmentMinigame(std::uint32_t) override {}
     void SceStartSkiMinigame(std::uint32_t) override {}
+    void SceStartPawnshopMinigame(std::uint32_t) override {}
     void SceOpenYuJianMap() override {}
     void SceRestAtInn(std::string_view, std::int32_t, std::uint32_t, std::uint32_t) override {}
 };
@@ -68,7 +69,11 @@ int main() {
     MockSceServices svc;
     SceVm vm(svc);
 
-    // Build a .sce file testing FOP (AND/OR), Between, HaveItem, DlgSel, CombatMaxRound, and SceProcHooks (501)
+    // Verify full OpenPAL3 opcode table registration (>= 110 opcodes) & GBK decoding
+    assert(RegisteredSceOpcodeCount() >= 110u);
+    assert(ConvertGbkOrUtf8ToUtf8("\xBE\xB0\xCC\xEC") == "景天");
+
+    // Build a .sce file testing FOP (AND/OR), Between, HaveItem, DlgSel, CombatMaxRound, and SceProcHooks (501 & 1415)
     SceFile sce;
     {
         SceAssembler a;
