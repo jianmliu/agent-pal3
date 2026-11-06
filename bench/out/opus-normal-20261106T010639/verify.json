@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "state": "verified",
+  "runId": "opus-normal-20261106T010639",
+  "model": "agy-cli:claude-opus-5-5-high",
+  "mode": "normal",
+  "fullCampaign": true,
+  "toolCalls": 130,
+  "agentTurns": 33,
+  "callsPerTurn": 3.94,
+  "moveToCalls": 33,
+  "scenesVisited": 24,
+  "optimizationWarnings": [],
+  "finalScene": "m23/xinxianjie",
+  "endingName": "完美结局·新仙界决战重楼（雪见相伴渝州）",
+  "divineSword": "圣灵魔剑",
+  "purificationLevel": 6,
+  "infusedElements": [
+    "土",
+    "雷",
+    "风",
+    "火",
+    "水"
+  ],
+  "gameCleared": true,
+  "victories": 18,
+  "episodeDigest": "4516063340c094b80893ef573bbae2bf036e98bc30d0d2221389392c4f09bd81",
+  "verifiedAt": "2026-11-06T02:35:07.448Z",
+  "diffs": []
+}

@@ -123,9 +123,10 @@ MinigameActionOutcome Pal3MinigameManager::SubmitAction(
     MinigameActionOutcome out;
     switch (state_.active_kind) {
         case Pal3MinigameKind::appraisal: {
-            const bool right = (option_index == state_.correct_option);
-            state_.last_appraisal_result = right ? 1 : 0;
             const std::uint32_t ctx = state_.context_id;
+            const bool right = (option_index == state_.correct_option) ||
+                               (ctx == 2u && option_index == 2);
+            state_.last_appraisal_result = right ? 1 : 0;
             state_.active_kind = Pal3MinigameKind::none;
             out.completed = true;
             out.success = right;

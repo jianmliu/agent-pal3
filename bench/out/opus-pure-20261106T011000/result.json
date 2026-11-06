@@ -1,0 +1,280 @@
+{
+  "ok": true,
+  "model": "agy-cli:claude-opus-5-5-high",
+  "mode": "pure",
+  "fullCampaign": true,
+  "toolCalls": 123,
+  "agentTurns": 84,
+  "durationMs": 380195,
+  "scenesVisited": 24,
+  "cpk": "m23",
+  "scn": "xinxianjie",
+  "title": "第24章·新仙界重楼终极决战与五大结局",
+  "gameCleared": true,
+  "endingName": "完美结局·新仙界决战重楼（雪见相伴渝州）",
+  "demonSword": {
+    "obtained": true,
+    "zhenyaojian_obtained": true,
+    "equipped_divine_sword": "圣灵魔剑",
+    "purification_level": 6,
+    "spirit_atk_bonus": 275,
+    "infused_elements": [
+      "土",
+      "雷",
+      "风",
+      "火",
+      "水"
+    ]
+  },
+  "favor": {
+    "xuejian": 75,
+    "longkui": 45,
+    "zixuan": 15,
+    "huaying": 15
+  },
+  "combat": {
+    "active": false,
+    "round": 4,
+    "max_round": 0,
+    "awaiting_role_id": 0,
+    "victories": 18,
+    "combos_used": 25,
+    "enemies": [
+      {
+        "slot": 0,
+        "id": 9006,
+        "name": "魔尊·重楼(新仙界)",
+        "element": "火",
+        "hp": 0,
+        "max_hp": 3200
+      }
+    ]
+  },
+  "minigame": {
+    "active": false,
+    "kind": "none",
+    "title": "蜀山御剑飞行大地图 (YuJian)",
+    "appraisals_passed": 2,
+    "pawnshops_completed": 1,
+    "encampments_completed": 1,
+    "ski_runs_completed": 1,
+    "yujian_flights": 1
+  },
+  "leader": {
+    "role_id": 0,
+    "model_code": "101",
+    "name": "景天",
+    "element": "风",
+    "nav_layer": 0,
+    "nav_tile": [
+      16,
+      13
+    ],
+    "position": [
+      0,
+      0,
+      -20
+    ],
+    "mv3_pose_checksum": 33982.96
+  },
+  "party": [
+    {
+      "role_id": 0,
+      "model_code": "101",
+      "name": "景天",
+      "element": "风",
+      "in_team": true,
+      "is_red_longkui": false,
+      "level": 37,
+      "hp": 1090,
+      "max_hp": 1090,
+      "shen": 590,
+      "max_shen": 590,
+      "qi": 100,
+      "max_qi": 100,
+      "attack": 320,
+      "defense": 186,
+      "formation_slot": "wind"
+    },
+    {
+      "role_id": 1,
+      "model_code": "104",
+      "name": "唐雪见",
+      "element": "土",
+      "in_team": true,
+      "is_red_longkui": false,
+      "level": 37,
+      "hp": 1050,
+      "max_hp": 1050,
+      "shen": 580,
+      "max_shen": 580,
+      "qi": 100,
+      "max_qi": 100,
+      "attack": 312,
+      "defense": 182,
+      "formation_slot": "earth"
+    },
+    {
+      "role_id": 2,
+      "model_code": "105",
+      "name": "龙葵",
+      "element": "水",
+      "in_team": true,
+      "is_red_longkui": false,
+      "level": 35,
+      "hp": 935,
+      "max_hp": 935,
+      "shen": 555,
+      "max_shen": 555,
+      "qi": 100,
+      "max_qi": 100,
+      "attack": 274,
+      "defense": 160,
+      "formation_slot": "thunder"
+    },
+    {
+      "role_id": 3,
+      "model_code": "107",
+      "name": "紫萱",
+      "element": "水",
+      "in_team": true,
+      "is_red_longkui": false,
+      "level": 42,
+      "hp": 1015,
+      "max_hp": 1015,
+      "shen": 615,
+      "max_shen": 615,
+      "qi": 100,
+      "max_qi": 100,
+      "attack": 288,
+      "defense": 168,
+      "formation_slot": "water"
+    },
+    {
+      "role_id": 4,
+      "model_code": "102",
+      "name": "徐长卿",
+      "element": "火",
+      "in_team": true,
+      "is_red_longkui": false,
+      "level": 42,
+      "hp": 1055,
+      "max_hp": 1055,
+      "shen": 575,
+      "max_shen": 575,
+      "qi": 100,
+      "max_qi": 100,
+      "attack": 296,
+      "defense": 174,
+      "formation_slot": "fire"
+    },
+    {
+      "role_id": 5,
+      "model_code": "109",
+      "name": "花楹",
+      "element": "土",
+      "in_team": true,
+      "is_red_longkui": false,
+      "level": 31,
+      "hp": 875,
+      "max_hp": 875,
+      "shen": 525,
+      "max_shen": 525,
+      "qi": 100,
+      "max_qi": 100,
+      "attack": 260,
+      "defense": 155,
+      "formation_slot": "center"
+    }
+  ],
+  "inventory": {
+    "money": 41049,
+    "items": [
+      {
+        "id": 6101,
+        "name": "止血草",
+        "count": 8
+      },
+      {
+        "id": 6102,
+        "name": "鼠儿果",
+        "count": 5
+      },
+      {
+        "id": 6201,
+        "name": "宜兴紫砂壶",
+        "count": 1
+      },
+      {
+        "id": 6202,
+        "name": "唐三彩骆驼",
+        "count": 1
+      },
+      {
+        "id": 6203,
+        "name": "青瓷莲花尊",
+        "count": 1
+      },
+      {
+        "id": 6301,
+        "name": "魔剑",
+        "count": 1
+      },
+      {
+        "id": 6302,
+        "name": "镇妖剑",
+        "count": 2
+      },
+      {
+        "id": 6401,
+        "name": "雷灵珠",
+        "count": 3
+      },
+      {
+        "id": 6402,
+        "name": "风灵珠",
+        "count": 2
+      },
+      {
+        "id": 6403,
+        "name": "圣灵珠",
+        "count": 2
+      },
+      {
+        "id": 6404,
+        "name": "土灵珠",
+        "count": 2
+      },
+      {
+        "id": 6405,
+        "name": "火灵珠",
+        "count": 2
+      },
+      {
+        "id": 6406,
+        "name": "水灵珠",
+        "count": 2
+      },
+      {
+        "id": 6501,
+        "name": "雪莲精",
+        "count": 2
+      }
+    ]
+  },
+  "gles3": {
+    "frames": 106,
+    "draw_calls": 2817773,
+    "world_vertices": 11094,
+    "mv3_models_loaded": 7,
+    "original_cpk_mounted": true,
+    "chapters_mounted": 24
+  },
+  "usage": {
+    "input_tokens": 157118,
+    "output_tokens": 23899,
+    "thinking_tokens": 0,
+    "cache_read_tokens": 5045491,
+    "total_tokens": 181017
+  }
+}

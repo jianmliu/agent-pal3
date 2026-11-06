@@ -52,7 +52,7 @@ target_compile_features(pal3_portable_sce_vm PUBLIC cxx_std_20)
 # 3. PAL3 .scn Scene, .nav Dual-Layer Tile Navigation & A* Pathfinder, and .pol / .cvd / .mv3 3D Models
 add_library(pal3_portable_scn_nav_model STATIC src/scn_nav_model.cpp)
 target_include_directories(pal3_portable_scn_nav_model PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(pal3_portable_scn_nav_model PUBLIC pal4_portable_scene pal4_portable_world pal3_portable_sce_vm)
+target_link_libraries(pal3_portable_scn_nav_model PUBLIC pal4_portable_scene pal4_portable_scene_data pal4_portable_world pal3_portable_sce_vm)
 target_compile_features(pal3_portable_scn_nav_model PUBLIC cxx_std_20)
 
 # 4. PAL3 Database, Favorability, Demon Sword & Semi-Realtime ATB + Five-Element Taiji Formation Combat

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -1013,6 +1014,9 @@ void ChapterHost::InitializeFromCpkStreams(std::istream& basedata_cpk,
         const std::string path = std::string("role/") + code + "/c01.mv3";
         if (auto bytes = base_reader.ReadIfPresent(path)) {
             role_mv3_models[code] = ParseMv3Model(*bytes);
+            auto& cached = role_render_cache[code];
+            cached.scene = ConvertMv3ToPortableScene(role_mv3_models[code], 0.0f, false);
+            cached.renderer.Upload(cached.scene);
         }
     }
 
@@ -1100,7 +1104,7 @@ bool ChapterHost::MountOriginalGameDirectory(const std::filesystem::path& game_d
     }
     original_game_dir = game_dir;
 
-    // 1. Mount `basedata/basedata.cpk` (`init.sce` + real protagonist `ROLE/<code>/C01.MV3` morph models)
+    // 1. Mount `basedata/basedata.cpk` (`init.sce` + real protagonist `ROLE/<code>/C01.MV3` morph models & `.tga` textures)
     std::optional<std::filesystem::path> base_cpk =
         FindFileCaseInsensitive(game_dir / "basedata", "basedata.cpk");
     if (!base_cpk) {
@@ -1116,58 +1120,39 @@ bool ChapterHost::MountOriginalGameDirectory(const std::filesystem::path& game_d
             if (auto init_bytes = base_reader.ReadIfPresent("init.sce")) {
                 sce_vm->SetSystemScript(ParseSceFile(*init_bytes));
             }
-            for (const char* code : {"101", "104", "105", "106", "107", "102", "109"}) {
-                const std::string path = std::string("role/") + code + "/c01.mv3";
-                if (auto bytes = base_reader.ReadIfPresent(path)) {
-                    role_mv3_models[code] = ParseMv3Model(*bytes);
+            for (const char* code : {"101", "104", "105", "106", "107", "102", "108", "109", "201", "202", "203"}) {
+                const std::string dir_prefix = std::string("role/") + code + "/";
+                std::optional<std::vector<std::uint8_t>> bytes =
+                    base_reader.ReadIfPresent(dir_prefix + "c01.mv3");
+                if (!bytes) bytes = base_reader.ReadIfPresent(dir_prefix + "c02.mv3");
+                if (!bytes) bytes = base_reader.ReadIfPresent(dir_prefix + "z01.mv3");
+                if (bytes) {
+                    auto mv3 = ParseMv3Model(*bytes);
+                    std::optional<std::vector<std::uint8_t>> tex_bytes;
+                    if (!mv3.texture_name.empty()) {
+                        tex_bytes = base_reader.ReadIfPresent(dir_prefix + mv3.texture_name);
+                    }
+                    if (!tex_bytes) {
+                        tex_bytes = base_reader.ReadIfPresent(dir_prefix + std::string(code) + ".tga");
+                    }
+                    if (!tex_bytes) {
+                        tex_bytes = base_reader.ReadIfPresent(dir_prefix + std::string(code) + ".dds");
+                    }
+                    if (tex_bytes) {
+                        mv3.decoded_texture = DecodePal3Texture(*tex_bytes);
+                    }
+                    role_mv3_models[code] = std::move(mv3);
+                    auto& cached = role_render_cache[code];
+                    cached.scene = ConvertMv3ToPortableScene(role_mv3_models[code], 0.0f, false);
+                    cached.renderer.Upload(cached.scene);
                 }
             }
         }
     }
 
-    // 2. Upgrade 3D .pol / .cvd models in pre-mounted campaign scenes from real `scene/*.cpk` archives
-    struct RealArchiveModelMap {
-        std::string_view cpk_prefix;
-        std::string_view cpk_file;
-        std::string_view pol_entry;
-        std::string_view cvd_entry;
-    };
-    constexpr RealArchiveModelMap kArchiveModels[] = {
-        {"q01/", "Q01.cpk", "yn01/yn01.pol", "yn01/_01.cvd"},
-        {"m01/", "M01.cpk", "1/1.pol", "1/1.cvd"},
-        {"q03/", "Q03.cpk", "q03/q03.pol", "q03/_01.cvd"},
-        {"m18/", "M18.cpk", "1/1.pol", ""},
-        {"m23/", "M23.cpk", "1/1.pol", ""},
-    };
-    for (const auto& spec : kArchiveModels) {
-        auto cpk_path = FindFileCaseInsensitive(game_dir / "scene", spec.cpk_file);
-        if (!cpk_path) cpk_path = FindFileCaseInsensitive(game_dir / "Scene", spec.cpk_file);
-        if (!cpk_path) continue;
-        std::ifstream ifs(*cpk_path, std::ios::binary);
-        if (!ifs) continue;
-        CpkPackageReader reader(ifs);
-        std::optional<PolModel> real_pol;
-        std::optional<CvdModel> real_cvd;
-        if (!spec.pol_entry.empty()) {
-            if (auto bytes = reader.ReadIfPresent(spec.pol_entry)) {
-                real_pol = ParsePolModel(*bytes);
-            }
-        }
-        if (!spec.cvd_entry.empty()) {
-            if (auto bytes = reader.ReadIfPresent(spec.cvd_entry)) {
-                real_cvd = ParseCvdModel(*bytes);
-            }
-        }
-        for (auto& [key, bundle] : scene_catalog) {
-            if (key.rfind(spec.cpk_prefix, 0) == 0) {
-                if (real_pol) bundle.pol = *real_pol;
-                if (real_cvd) bundle.cvd = *real_cvd;
-            }
-        }
-    }
-
-    // Refresh active scene geometry & GLES3 draw buffers if a scene is already loaded
+    // 2. Lazily upgrade active scene (and any subsequent scene on SceLoadScene) from real `scene/*.cpk` archives
     const std::string active_key = current_cpk + "/" + current_scn;
+    EnsureRealSceneAssetsLoaded(active_key);
     auto it = scene_catalog.find(active_key);
     if (it != scene_catalog.end()) {
         active_pol = it->second.pol;
@@ -1178,6 +1163,105 @@ bool ChapterHost::MountOriginalGameDirectory(const std::filesystem::path& game_d
         RenderFrameToGles();
     }
     return true;
+}
+
+void ChapterHost::EnsureRealSceneAssetsLoaded(const std::string& key) {
+    if (original_game_dir.empty()) return;
+    auto it = scene_catalog.find(key);
+    if (it == scene_catalog.end() || it->second.real_assets_loaded) return;
+    it->second.real_assets_loaded = true;
+
+    struct RealSceneMapping {
+        std::string_view key;
+        std::string_view cpk_file;
+        std::string_view pol_entry;
+        std::string_view cvd_entry;
+    };
+    static constexpr RealSceneMapping kRealSceneMap[] = {
+        {"q01/yn01a", "Q01.cpk", "b/b.pol", "yn01/_01.cvd"},
+        {"q01/binhua", "Q02.cpk", "q02/q02.pol", ""},
+        {"q01/tangjiabao", "Q04.cpk", "q04/q04.pol", ""},
+        {"q01/leizhou", "Q09.cpk", "c/c.pol", ""},
+        {"m01/m01", "M01.cpk", "1/1.pol", "1/1.cvd"},
+        {"m01/m02", "M02.cpk", "1/1.pol", ""},
+        {"m01/m03", "M03.cpk", "1/1.pol", ""},
+        {"m01/m06", "M06.cpk", "1/1.pol", ""},
+        {"m01/m10", "m10.cpk", "1/1.pol", ""},
+        {"q03/q03", "Q03.cpk", "q03/q03.pol", "q03/_01.cvd"},
+        {"q03/anning", "Q06.cpk", "q06/q06.pol", ""},
+        {"q03/guteng", "M09.cpk", "1/1.pol", ""},
+        {"q03/shushan", "Q08.cpk", "q08/q08.pol", ""},
+        {"q03/manzhou", "Q13.cpk", "q13/q13.pol", ""},
+        {"m18/shenmo", "m11.cpk", "1/1.pol", ""},
+        {"m18/shenjie", "Q10.cpk", "q10/q10.pol", ""},
+        {"m18/guijie", "Q11.cpk", "q11/q11.pol", ""},
+        {"m18/rongyan", "M16.cpk", "1/1.pol", ""},
+        {"m18/m18", "M18.cpk", "1/1.pol", ""},
+        {"m18/haidicheng", "M21.cpk", "1/1.pol", ""},
+        {"m23/bingfeng", "M22.cpk", "1/1.pol", ""},
+        {"m23/jianzhong_outer", "M22.cpk", "2/2.pol", ""},
+        {"m23/m23", "M23.cpk", "1/1.pol", ""},
+        {"m23/xinxianjie", "M24.cpk", "1/1.pol", ""},
+    };
+
+    const RealSceneMapping* matched = nullptr;
+    for (const auto& m : kRealSceneMap) {
+        if (m.key == key) {
+            matched = &m;
+            break;
+        }
+    }
+    if (!matched) return;
+
+    auto cpk_path = FindFileCaseInsensitive(original_game_dir / "scene", matched->cpk_file);
+    if (!cpk_path) cpk_path = FindFileCaseInsensitive(original_game_dir / "Scene", matched->cpk_file);
+    if (!cpk_path) return;
+
+    std::ifstream ifs(*cpk_path, std::ios::binary);
+    if (!ifs) return;
+    CpkPackageReader reader(ifs);
+
+    if (!matched->pol_entry.empty()) {
+        if (auto pol_bytes = reader.ReadIfPresent(matched->pol_entry)) {
+            auto real_pol = ParsePolModel(*pol_bytes);
+            NormalizePolModelToStageBounds(real_pol, 240.0f);
+
+            std::string pol_dir;
+            const auto slash_pos = matched->pol_entry.rfind('/');
+            if (slash_pos != std::string_view::npos) {
+                pol_dir = std::string(matched->pol_entry.substr(0, slash_pos + 1));
+            }
+            std::map<std::string, std::optional<pal4::portable::Texture>> tex_cache;
+            for (auto& sm : real_pol.meshes) {
+                if (sm.texture_name.empty()) continue;
+                const std::string tkey = ToLowerAscii(sm.texture_name);
+                auto cache_it = tex_cache.find(tkey);
+                if (cache_it == tex_cache.end()) {
+                    std::optional<std::vector<std::uint8_t>> tbytes =
+                        reader.ReadIfPresent(pol_dir + sm.texture_name);
+                    if (!tbytes) {
+                        const auto dot = sm.texture_name.rfind('.');
+                        const std::string stem =
+                            (dot != std::string::npos) ? sm.texture_name.substr(0, dot) : sm.texture_name;
+                        tbytes = reader.ReadIfPresent(pol_dir + stem + ".dds");
+                        if (!tbytes) tbytes = reader.ReadIfPresent(pol_dir + stem + ".tga");
+                    }
+                    std::optional<pal4::portable::Texture> decoded;
+                    if (tbytes) {
+                        decoded = DecodePal3Texture(*tbytes);
+                    }
+                    cache_it = tex_cache.emplace(tkey, std::move(decoded)).first;
+                }
+                sm.decoded_texture = cache_it->second;
+            }
+            it->second.pol = std::move(real_pol);
+        }
+    }
+    if (!matched->cvd_entry.empty()) {
+        if (auto cvd_bytes = reader.ReadIfPresent(matched->cvd_entry)) {
+            it->second.cvd = ParseCvdModel(*cvd_bytes);
+        }
+    }
 }
 
 bool ChapterHost::TryLoadSceneFromOriginalGameDir(std::string_view cpk_name,
@@ -1331,6 +1415,17 @@ bool ChapterHost::CheckAndFireStepTriggers() {
 
         if (tile[0] >= obj.nav_trigger_min[0] && tile[0] <= obj.nav_trigger_max[0] &&
             tile[1] >= obj.nav_trigger_min[1] && tile[1] <= obj.nav_trigger_max[1]) {
+            if (enforce_full_campaign && current_cpk == "q01" && current_scn == "yn01a" &&
+                obj.sce_proc_id == 599u) {
+                const bool appr_done = minigames.State().appraisals_passed >= 1u;
+                const bool xuejian_joined = party.size() > 1 && party[1].in_team;
+                const bool chonglou_fought = combat.State().total_victories >= 1u;
+                if (!appr_done || !xuejian_joined || !chonglou_fought) {
+                    dialog.recent_history.clear();
+                    SceShowDialog("景天：还没办完永安当二楼赵管事鉴宝、结识唐雪见与竹林重楼三招之约，现在还不能离开渝州！");
+                    return true;
+                }
+            }
             if (obj.times < 255) obj.times--;
             const std::uint32_t proc_id = obj.sce_proc_id;
             sce_vm->CallProc(proc_id);
@@ -1449,6 +1544,8 @@ std::string ChapterHost::MoveLeaderTo(float target_x, float target_z,
 }
 
 std::string ChapterHost::Interact(std::string_view target_kind, std::int32_t target_id) {
+    const float max_interact_dist = enforce_full_campaign ? 18.0f : 100.0f;
+
     // 1. Check Ladder / Elevator interaction (`node_type == 15 | 40`)
     for (auto& obj : scene_objects) {
         if (!obj.active) continue;
@@ -1456,13 +1553,17 @@ std::string ChapterHost::Interact(std::string_view target_kind, std::int32_t tar
             (obj.node_type == static_cast<std::uint16_t>(ScnNodeType::ladder) ||
              obj.node_type == static_cast<std::uint16_t>(ScnNodeType::elevator));
         if (!is_ladder) continue;
-        if ((!target_kind.empty() && target_kind != "ladder") ||
+        if ((!target_kind.empty() && target_kind != "ladder" && target_kind != "elevator" &&
+             target_kind != "object") ||
             (target_id >= 0 && obj.id != target_id)) {
             continue;
         }
         const float dist = std::hypot(obj.position[0] - movement_state.position[0],
                                       obj.position[2] - movement_state.position[2]);
-        if (dist <= 100.0f || target_id == obj.id) {
+        if (enforce_full_campaign && dist > max_interact_dist) {
+            return "target_too_far: move_to within 18 units of ladder/elevator first";
+        }
+        if (dist <= max_interact_dist || (!enforce_full_campaign && target_id == obj.id)) {
             const std::uint32_t next_layer =
                 static_cast<std::uint32_t>((static_cast<int>(leader_nav_layer) + obj.ladder_switch_layer) & 1);
             RebuildCollisionAndSceneForLayer(next_layer);
@@ -1475,29 +1576,45 @@ std::string ChapterHost::Interact(std::string_view target_kind, std::int32_t tar
     }
 
     // 2. Find nearest matching NPC (`ScnRole`) or Object/Mechanism/AABB (`ScnNode`)
-    float best_dist = 100.0f;
+    float best_dist = max_interact_dist;
     std::uint32_t best_proc = 0;
     std::string chosen_label;
+    bool found_wrong_layer = false;
+    bool found_too_far = false;
 
     if (target_kind.empty() || target_kind == "npc") {
         for (const auto& npc : scene_npcs) {
             if (!npc.active || npc.sce_proc_id == 0) continue;
             if (target_id >= 0 && npc.id != target_id) continue;
+            if (enforce_full_campaign && npc.nav_layer != leader_nav_layer) {
+                found_wrong_layer = true;
+                continue;
+            }
             const float d = std::hypot(npc.position[0] - movement_state.position[0],
                                        npc.position[2] - movement_state.position[2]);
             if (d <= best_dist) {
                 best_dist = d;
                 best_proc = npc.sce_proc_id;
                 chosen_label = "npc:" + npc.name;
+            } else {
+                found_too_far = true;
             }
         }
     }
 
-    if (target_kind.empty() || target_kind == "object" || target_kind == "aabb") {
+    if (target_kind.empty() || target_kind == "object" || target_kind == "aabb" ||
+        target_kind == "tile_trigger") {
         for (auto& obj : scene_objects) {
             if (!obj.active || obj.times == 0 || obj.sce_proc_id == 0) continue;
-            if (obj.node_type == static_cast<std::uint16_t>(ScnNodeType::tile_trigger)) continue;
+            if (!enforce_full_campaign &&
+                obj.node_type == static_cast<std::uint16_t>(ScnNodeType::tile_trigger)) {
+                continue;
+            }
             if (target_id >= 0 && obj.id != target_id) continue;
+            if (enforce_full_campaign && obj.nav_layer != leader_nav_layer) {
+                found_wrong_layer = true;
+                continue;
+            }
             const float d = std::hypot(obj.position[0] - movement_state.position[0],
                                        obj.position[2] - movement_state.position[2]);
             if (d <= best_dist) {
@@ -1505,12 +1622,74 @@ std::string ChapterHost::Interact(std::string_view target_kind, std::int32_t tar
                 best_proc = obj.sce_proc_id;
                 chosen_label = "object:" + obj.name;
                 if (obj.times < 255) obj.times--;
+            } else {
+                found_too_far = true;
             }
         }
     }
 
     if (best_proc == 0) {
+        if (found_wrong_layer) {
+            return "target_on_different_layer: use move_to with target layer or traverse ladder/elevator first";
+        }
+        if (found_too_far) {
+            return "target_too_far: move_to within 18 units of target first";
+        }
         return "interact_none_in_range";
+    }
+
+    if (enforce_full_campaign) {
+        if (current_cpk == "q01" && current_scn == "yn01a" && best_proc == 503u) {
+            const bool appr_done = minigames.State().appraisals_passed >= 1u;
+            const bool xuejian_joined = party.size() > 1 && party[1].in_team;
+            if (!appr_done || !xuejian_joined) {
+                dialog.recent_history.clear();
+                SceShowDialog("景天：得先去永安当二楼账房找赵文昌管事鉴宝，并在城中结识唐雪见取得魔剑，再去竹林赴重楼之约！");
+                return "prerequisite_not_met:complete_zhao_and_xuejian_first";
+            }
+        }
+        if (current_cpk == "q01" && current_scn == "yn01a" && best_proc == 599u) {
+            const bool appr_done = minigames.State().appraisals_passed >= 1u;
+            const bool xuejian_joined = party.size() > 1 && party[1].in_team;
+            const bool chonglou_fought = combat.State().total_victories >= 1u;
+            if (!appr_done || !xuejian_joined || !chonglou_fought) {
+                dialog.recent_history.clear();
+                SceShowDialog("景天：还没办完永安当二楼赵管事鉴宝、结识唐雪见与竹林重楼三招之约，现在还不能离开渝州！");
+                return "prerequisite_not_met:complete_yuzhou_tasks_first";
+            }
+        }
+        if (current_cpk == "m01" && current_scn == "m01" && best_proc == 604u) {
+            const bool bridge_opened =
+                !scene_objects.empty() && scene_objects[0].cvd_anim_time_sec >= 1.0f;
+            const bool boss_defeated = combat.State().total_victories >= 2u;
+            if (!bridge_opened || !boss_defeated) {
+                dialog.recent_history.clear();
+                SceShowDialog("唐雪见：得先开启右侧石桥机关（_f01.cvd）并击退拦截栈道的霹雳堂头目，才能前往九龙坡！");
+                return "prerequisite_not_met:open_bridge_and_defeat_pilittang_boss_first";
+            }
+        }
+        if (current_cpk == "q01" && current_scn == "binhua" && best_proc == 512u) {
+            if (minigames.State().pawnshops_completed < 1u) {
+                dialog.recent_history.clear();
+                SceShowDialog("景天：先找宾化永安当掌柜完成当铺经营筹集盘缠，再去会合徐长卿与紫萱渡海前往蓬莱！");
+                return "prerequisite_not_met:complete_binhua_pawnshop_first";
+            }
+        }
+        if (current_cpk == "q03" && current_scn == "manzhou" && best_proc == 715u) {
+            if (minigames.State().appraisals_passed < 2u) {
+                dialog.recent_history.clear();
+                SceShowDialog("紫萱：先替城中蛮州古玩商鉴定越窑秘色青瓷莲花碗，再闯灵山仙人洞前往海底城吧。");
+                return "prerequisite_not_met:complete_manzhou_appraisal_first";
+            }
+        }
+        if (current_cpk == "m23" && current_scn == "m23" && best_proc == 913u) {
+            if (demon_sword.equipped_divine_sword != "圣灵魔剑" &&
+                demon_sword.equipped_divine_sword != "圣灵镇妖剑") {
+                dialog.recent_history.clear();
+                SceShowDialog("紫萱：邪剑仙妖气太盛，必须先在铸剑炉（sword_tomb_furnace）重铸【圣灵魔剑】或【圣灵镇妖剑】方可迎战！");
+                return "prerequisite_not_met:forge_divine_sword_at_furnace_first";
+            }
+        }
     }
 
     dialog.recent_history.clear();
@@ -1623,8 +1802,13 @@ CombatTurnOutcome ChapterHost::ExecuteCombatAction(std::string_view action_kind,
 MinigameActionOutcome ChapterHost::ExecuteMinigameAction(std::string_view action,
                                                          std::int32_t option_index,
                                                          std::string_view destination_code) {
+    std::string effective_dest(destination_code);
+    if (enforce_full_campaign && current_cpk == "m23" && current_scn == "bingfeng" &&
+        minigames.State().active_kind == Pal3MinigameKind::yujian) {
+        effective_dest = "m23/jianzhong_outer";
+    }
     const auto outcome = minigames.SubmitAction(
-        action, option_index, destination_code, party, favor, inventory, money);
+        action, option_index, effective_dest, party, favor, inventory, money);
     if (outcome.completed) {
         sce_vm->NotifyMinigameFinished();
         if (!outcome.trigger_load_cpk.empty()) {
@@ -1666,6 +1850,7 @@ Pal3HostCheckpoint ChapterHost::SaveCheckpoint() const {
 
 void ChapterHost::LoadCheckpoint(const Pal3HostCheckpoint& cp) {
     const std::string key = cp.current_cpk + "/" + cp.current_scn;
+    EnsureRealSceneAssetsLoaded(key);
     auto it = scene_catalog.find(key);
     if (it != scene_catalog.end()) {
         active_nav = it->second.nav;
@@ -1721,6 +1906,306 @@ void ChapterHost::RenderFrameToGles(int width, int height) {
     draws += actor_renderer.DrawScene(displayed_leader_scene, vp, actor_model);
     total_draw_calls += draws;
     ++total_frames;
+}
+
+namespace {
+
+float SampleVisualFloorY(const pal4::portable::Scene& world_scene, float x, float z, float ref_y) {
+    const auto& wv = world_scene.vertices;
+    float best_y = ref_y;
+    float best_diff = 1e9f;
+    bool hit_direct = false;
+
+    for (std::size_t i = 0; i + 2 < wv.size(); i += 3) {
+        const auto& v0 = wv[i].position;
+        const auto& v1 = wv[i + 1].position;
+        const auto& v2 = wv[i + 2].position;
+        if (x < std::min({v0[0], v1[0], v2[0]}) - 1.5f || x > std::max({v0[0], v1[0], v2[0]}) + 1.5f) continue;
+        if (z < std::min({v0[2], v1[2], v2[2]}) - 1.5f || z > std::max({v0[2], v1[2], v2[2]}) + 1.5f) continue;
+
+        const float e1x = v1[0] - v0[0], e1y = v1[1] - v0[1], e1z = v1[2] - v0[2];
+        const float e2x = v2[0] - v0[0], e2y = v2[1] - v0[1], e2z = v2[2] - v0[2];
+        const float nx = e1y * e2z - e1z * e2y;
+        const float ny = e1z * e2x - e1x * e2z;
+        const float nz = e1x * e2y - e1y * e2x;
+        const float nlen = std::sqrt(nx * nx + ny * ny + nz * nz);
+        if (nlen < 1e-4f || (std::abs(ny) / nlen) < 0.52f) continue;
+
+        const float denom = (v1[2] - v2[2]) * (v0[0] - v2[0]) + (v2[0] - v1[0]) * (v0[2] - v2[2]);
+        if (std::abs(denom) < 1e-4f) continue;
+        const float a = ((v1[2] - v2[2]) * (x - v2[0]) + (v2[0] - v1[0]) * (z - v2[2])) / denom;
+        const float b = ((v2[2] - v0[2]) * (x - v2[0]) + (v0[0] - v2[0]) * (z - v2[2])) / denom;
+        const float c = 1.0f - a - b;
+        if (a >= -0.08f && b >= -0.08f && c >= -0.08f) {
+            const float tri_y = a * v0[1] + b * v1[1] + c * v2[1];
+            const float diff = std::abs(tri_y - ref_y);
+            if (diff < 65.0f && diff < best_diff) {
+                best_diff = diff;
+                best_y = tri_y;
+                hit_direct = true;
+            }
+        }
+    }
+    if (hit_direct) return best_y;
+
+    for (std::size_t i = 0; i + 2 < wv.size(); i += 3) {
+        const auto& v0 = wv[i].position;
+        const auto& v1 = wv[i + 1].position;
+        const auto& v2 = wv[i + 2].position;
+        const float mx = (v0[0] + v1[0] + v2[0]) / 3.0f;
+        const float my = (v0[1] + v1[1] + v2[1]) / 3.0f;
+        const float mz = (v0[2] + v1[2] + v2[2]) / 3.0f;
+        const float d_xz = std::hypot(mx - x, mz - z);
+        if (d_xz > 45.0f) continue;
+        const float e1x = v1[0] - v0[0], e1y = v1[1] - v0[1], e1z = v1[2] - v0[2];
+        const float e2x = v2[0] - v0[0], e2y = v2[1] - v0[1], e2z = v2[2] - v0[2];
+        const float nx = e1y * e2z - e1z * e2y;
+        const float ny = e1z * e2x - e1x * e2z;
+        const float nz = e1x * e2y - e1y * e2x;
+        const float nlen = std::sqrt(nx * nx + ny * ny + nz * nz);
+        if (nlen < 1e-4f || (std::abs(ny) / nlen) < 0.55f) continue;
+        const float score = d_xz + std::abs(my - ref_y) * 0.7f;
+        if (std::abs(my - ref_y) < 55.0f && score < best_diff) {
+            best_diff = score;
+            best_y = my;
+        }
+    }
+    return best_y;
+}
+
+std::string PickNpcModelCode(
+    std::string_view name,
+    std::int32_t npc_id,
+    const std::map<std::string, ChapterHost::UploadedRoleRenderCache>& cache) {
+    auto pick_if_loaded = [&](std::initializer_list<const char*> candidates) -> std::string {
+        for (const char* c : candidates) {
+            if (cache.count(c) > 0) return c;
+        }
+        return "102";
+    };
+    if (name.find("雪见") != std::string_view::npos) return pick_if_loaded({"104"});
+    if (name.find("龙葵") != std::string_view::npos) return pick_if_loaded({"105"});
+    if (name.find("紫萱") != std::string_view::npos || name.find("夕瑶") != std::string_view::npos) {
+        return pick_if_loaded({"107"});
+    }
+    if (name.find("花楹") != std::string_view::npos) return pick_if_loaded({"109", "104"});
+    if (name.find("长卿") != std::string_view::npos || name.find("云霆") != std::string_view::npos ||
+        name.find("清微") != std::string_view::npos) {
+        return pick_if_loaded({"102"});
+    }
+    if (name.find("重楼") != std::string_view::npos || name.find("邪剑仙") != std::string_view::npos ||
+        name.find("罗如烈") != std::string_view::npos || name.find("天妖皇") != std::string_view::npos ||
+        name.find("火鬼王") != std::string_view::npos || name.find("帝江") != std::string_view::npos ||
+        name.find("古藤") != std::string_view::npos || name.find("人面兽") != std::string_view::npos ||
+        name.find("霹雳堂") != std::string_view::npos || name.find("唐泰") != std::string_view::npos ||
+        name.find("赵无延") != std::string_view::npos) {
+        return pick_if_loaded({"108", "201", "106", "102"});
+    }
+    static constexpr const char* kFallbackCodes[] = {"102", "107", "106", "104", "105"};
+    return kFallbackCodes[static_cast<std::size_t>(std::max(0, npc_id)) % 5u];
+}
+
+}  // namespace
+
+bool ChapterHost::RenderFrameToBmp(const std::filesystem::path& out_path,
+                                   int width,
+                                   int height,
+                                   std::optional<float> custom_yaw_deg,
+                                   float pitch_deg,
+                                   float cam_dist) {
+    width = std::clamp(width, 64, 1024);
+    height = std::clamp(height, 64, 1024);
+
+    const std::string active_key = current_cpk + "/" + current_scn;
+    auto cat_it = scene_catalog.find(active_key);
+    if (cat_it != scene_catalog.end() && !cat_it->second.real_assets_loaded && !original_game_dir.empty()) {
+        EnsureRealSceneAssetsLoaded(active_key);
+        active_pol = cat_it->second.pol;
+        active_cvd = cat_it->second.cvd;
+        displayed_world_scene = ConvertPolToPortableScene(active_pol);
+        world_renderer.Upload(displayed_world_scene);
+    }
+
+    const float leader_vis_y = SampleVisualFloorY(
+        displayed_world_scene, movement_state.position[0], movement_state.position[2], movement_state.position[1]);
+    const pal4::portable::Point3 leader_vis_pos{
+        movement_state.position[0], leader_vis_y, movement_state.position[2]};
+
+    const float deg_to_rad = 3.1415926535f / 180.0f;
+    float base_yaw = custom_yaw_deg.value_or(
+        (last_render_scene_key == active_key) ? last_render_yaw_deg : 205.0f);
+    if (!custom_yaw_deg && std::hypot(leader_vis_pos[0], leader_vis_pos[2]) > 14.0f) {
+        // Aim camera slightly inward toward center of the 3D hall/stage so walls don't occlude the back of the camera
+        base_yaw = std::atan2(-leader_vis_pos[0], -leader_vis_pos[2]) * 57.2957795f + 180.0f;
+    }
+
+    const float desired_dist = (cam_dist > 10.0f && cam_dist < 90.0f) ? cam_dist : 64.0f;
+    last_render_scene_key = active_key;
+    last_render_yaw_deg = base_yaw;
+
+    const auto saved_cam = orbit_camera;
+    orbit_camera.target = {leader_vis_pos[0], leader_vis_pos[1] + 8.5f, leader_vis_pos[2]};
+    orbit_camera.yaw = base_yaw * deg_to_rad;
+    orbit_camera.pitch = pitch_deg * deg_to_rad;
+    orbit_camera.distance = desired_dist;
+    orbit_camera.scale = 140.0f;
+
+    const float aspect = static_cast<float>(width) / static_cast<float>(std::max(1, height));
+    const auto vp = orbit_camera.Matrix(aspect);
+    const auto world_model = pal4::portable::InstanceMatrix({0.0f, 0.0f, 0.0f}, 0.0f);
+
+    AgentPal4SetRasterizeEnabled(true);
+    pal4::portable::GlesRenderer::BeginFrame(width, height);
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+
+    // 1. Draw 3D `.pol` world scene with real `.dds`/`.tga` textures
+    world_renderer.DrawScene(displayed_world_scene, vp, world_model);
+
+    // 2. Draw visible scene NPCs & Bosses
+    for (const auto& npc : scene_npcs) {
+        if (!npc.active || !npc.visible) continue;
+        const std::string code = PickNpcModelCode(npc.name, npc.id, role_render_cache);
+        auto rc_it = role_render_cache.find(code);
+        if (rc_it == role_render_cache.end()) continue;
+        const float ny = SampleVisualFloorY(
+            displayed_world_scene, npc.position[0], npc.position[2], npc.position[1]);
+        const float dx = leader_vis_pos[0] - npc.position[0];
+        const float dz = leader_vis_pos[2] - npc.position[2];
+        const float yaw_deg = (std::hypot(dx, dz) > 2.0f)
+                                  ? (std::atan2(dx, dz) * 57.2957795f)
+                                  : npc.facing_deg;
+        const auto npc_model =
+            pal4::portable::InstanceMatrix({npc.position[0], ny, npc.position[2]}, yaw_deg);
+        rc_it->second.renderer.DrawScene(rc_it->second.scene, vp, npc_model);
+    }
+
+    // 3. Draw party companions (`in_team`) in formation around the leader
+    int companion_slot = 0;
+    for (const auto& member : party) {
+        if (!member.in_team || member.role_id == leader_role_id || member.role_id == 5) continue;
+        auto rc_it = role_render_cache.find(member.model_code);
+        if (rc_it == role_render_cache.end()) continue;
+        const float angle = (movement_state.yaw * deg_to_rad) + 3.14159265f + (companion_slot - 1) * 0.65f;
+        const float dist_back = 7.5f + (companion_slot % 2) * 3.0f;
+        const float cx = leader_vis_pos[0] + std::sin(angle) * dist_back;
+        const float cz = leader_vis_pos[2] + std::cos(angle) * dist_back;
+        const float cy = SampleVisualFloorY(displayed_world_scene, cx, cz, leader_vis_pos[1]);
+        const auto comp_model = pal4::portable::InstanceMatrix({cx, cy, cz}, movement_state.yaw);
+        rc_it->second.renderer.DrawScene(rc_it->second.scene, vp, comp_model);
+        ++companion_slot;
+    }
+
+    // 4. Draw leader with current `.mv3` animation pose
+    const auto& leader = LeaderRole();
+    auto mv3_it = role_mv3_models.find(leader.model_code);
+    if (mv3_it != role_mv3_models.end()) {
+        displayed_leader_scene =
+            ConvertMv3ToPortableScene(mv3_it->second, animation_clock_sec, false);
+        actor_renderer.Upload(displayed_leader_scene);
+        const auto actor_model =
+            pal4::portable::InstanceMatrix(leader_vis_pos, movement_state.yaw);
+        actor_renderer.DrawScene(displayed_leader_scene, vp, actor_model);
+    }
+
+    std::vector<std::uint8_t> rgba(
+        static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u, 0u);
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+    AgentPal4SetRasterizeEnabled(false);
+    orbit_camera = saved_cam;
+
+    if (out_path.has_parent_path()) {
+        std::error_code ec;
+        std::filesystem::create_directories(out_path.parent_path(), ec);
+    }
+    std::ofstream out(out_path, std::ios::binary | std::ios::trunc);
+    if (!out) return false;
+
+    const int row_stride = (width * 3 + 3) & ~3;
+    const std::uint32_t data_size = static_cast<std::uint32_t>(row_stride * height);
+    const std::uint32_t file_size = 54u + data_size;
+    std::uint8_t header[54]{};
+    header[0] = 'B';
+    header[1] = 'M';
+    std::memcpy(header + 2, &file_size, 4);
+    const std::uint32_t pixel_offset = 54u;
+    std::memcpy(header + 10, &pixel_offset, 4);
+    const std::uint32_t dib_size = 40u;
+    std::memcpy(header + 14, &dib_size, 4);
+    const std::int32_t bmp_w = width;
+    const std::int32_t bmp_h = height;
+    std::memcpy(header + 18, &bmp_w, 4);
+    std::memcpy(header + 22, &bmp_h, 4);
+    const std::uint16_t planes = 1u;
+    const std::uint16_t bpp = 24u;
+    std::memcpy(header + 26, &planes, 2);
+    std::memcpy(header + 28, &bpp, 2);
+    std::memcpy(header + 34, &data_size, 4);
+    out.write(reinterpret_cast<const char*>(header), 54);
+
+    std::vector<std::uint8_t> row(static_cast<std::size_t>(row_stride), 0u);
+    for (int y = 0; y < height; ++y) {
+        const std::size_t src_row =
+            static_cast<std::size_t>(y) * static_cast<std::size_t>(width) * 4u;
+        for (int x = 0; x < width; ++x) {
+            row[x * 3 + 0] = rgba[src_row + x * 4 + 2];  // B
+            row[x * 3 + 1] = rgba[src_row + x * 4 + 1];  // G
+            row[x * 3 + 2] = rgba[src_row + x * 4 + 0];  // R
+        }
+        out.write(reinterpret_cast<const char*>(row.data()), row_stride);
+    }
+    return static_cast<bool>(out);
+}
+
+std::string ChapterHost::RenderSubstepsToBmp(const std::string& out_prefix,
+                                             float from_x, float from_y, float from_z,
+                                             float to_x, float to_y, float to_z,
+                                             int width,
+                                             int height,
+                                             int max_substeps) {
+    const float total_dist = std::hypot(to_x - from_x, to_z - from_z);
+    if (total_dist < 12.0f) {
+        return "{\"ok\":true,\"substeps\":[]}";
+    }
+    int K = 1;
+    if (total_dist > 60.0f) K = 3;
+    else if (total_dist > 28.0f) K = 2;
+    K = std::min(K, std::clamp(max_substeps, 1, 4));
+
+    const auto saved_pos = movement_state.position;
+    const auto saved_yaw = movement_state.yaw;
+    const float saved_anim = animation_clock_sec;
+
+    const float move_yaw_deg = std::atan2(to_x - from_x, to_z - from_z) * 57.2957795f;
+    std::ostringstream json;
+    json << "{\"ok\":true,\"substeps\":[";
+    bool first = true;
+    for (int k = 1; k <= K; ++k) {
+        const float frac = static_cast<float>(k) / static_cast<float>(K + 1);
+        const float sx = from_x + (to_x - from_x) * frac;
+        const float sy = from_y + (to_y - from_y) * frac;
+        const float sz = from_z + (to_z - from_z) * frac;
+        movement_state.position = {sx, sy, sz};
+        movement_state.yaw = move_yaw_deg;
+        animation_clock_sec = saved_anim + static_cast<float>(k) * 0.18f;
+
+        const std::string sub_path = out_prefix + "-sub" + std::to_string(k) + ".bmp";
+        if (RenderFrameToBmp(sub_path, width, height)) {
+            if (!first) json << ",";
+            first = false;
+            json << "{\"index\":" << k
+                 << ",\"frac\":" << frac
+                 << ",\"position\":[" << sx << "," << sy << "," << sz << "]"
+                 << ",\"yaw\":" << move_yaw_deg
+                 << ",\"path\":\"" << sub_path << "\"}";
+        }
+    }
+    json << "]}";
+
+    movement_state.position = saved_pos;
+    movement_state.yaw = saved_yaw;
+    animation_clock_sec = saved_anim;
+    return json.str();
 }
 
 // ============================================================================
@@ -1879,6 +2364,7 @@ void ChapterHost::SceLoadScene(std::string_view cpk_name, std::string_view scn_n
     if (it == scene_catalog.end()) {
         throw std::runtime_error("unknown PAL3 scene in catalog: " + key);
     }
+    EnsureRealSceneAssetsLoaded(key);
 
     current_cpk = lower_cpk;
     current_scn = lower_scn;
@@ -1899,6 +2385,17 @@ void ChapterHost::SceLoadScene(std::string_view cpk_name, std::string_view scn_n
         npc.facing_deg = r.facing_deg;
         npc.nav_layer = r.nav_layer;
         npc.sce_proc_id = r.sce_proc_id;
+        if (enforce_full_campaign) {
+            const bool is_fast_shortcut =
+                (lower_cpk == "m01" && lower_scn == "m01" && r.index == 5) ||
+                (lower_cpk == "q03" && lower_scn == "q03" && (r.index == 6 || r.index == 7)) ||
+                (lower_cpk == "m18" && lower_scn == "m18" && r.index == 8) ||
+                (lower_cpk == "m23" && lower_scn == "m23" && r.index == 9);
+            if (is_fast_shortcut) {
+                npc.active = false;
+                npc.visible = false;
+            }
+        }
         scene_npcs.push_back(std::move(npc));
     }
 
@@ -1951,7 +2448,7 @@ float ChapterHost::SceObjectPlay(std::int32_t obj_id, std::string_view /*anim_na
             obj.cvd_anim_time_sec = std::max(duration_sec, active_cvd.animation_duration_sec);
         }
     }
-    displayed_world_scene = ConvertCvdToPortableScene(active_cvd, active_cvd.animation_duration_sec);
+    (void)EvaluateCvdAnimation(active_cvd, active_cvd.animation_duration_sec);
     return duration_sec;
 }
 

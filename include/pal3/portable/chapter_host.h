@@ -153,6 +153,18 @@ struct ChapterHost final : ISceEngineServices {
     Pal3RoleState& LeaderRole();
     const Pal3RoleState& LeaderRole() const;
     void RenderFrameToGles(int width = 1280, int height = 720);
+    bool RenderFrameToBmp(const std::filesystem::path& out_path,
+                          int width = 640,
+                          int height = 360,
+                          std::optional<float> custom_yaw_deg = std::nullopt,
+                          float pitch_deg = 24.0f,
+                          float cam_dist = 105.0f);
+    std::string RenderSubstepsToBmp(const std::string& out_prefix,
+                                    float from_x, float from_y, float from_z,
+                                    float to_x, float to_y, float to_z,
+                                    int width = 512,
+                                    int height = 288,
+                                    int max_substeps = 3);
 
     // ISceEngineServices implementation
     void SceRolePathTo(std::int32_t role_id, std::int32_t nav_x, std::int32_t nav_z) override;
@@ -214,10 +226,18 @@ struct ChapterHost final : ISceEngineServices {
         SceFile sce;
         PolModel pol;
         CvdModel cvd;
+        bool real_assets_loaded{false};
+    };
+    struct UploadedRoleRenderCache {
+        pal4::portable::Scene scene;
+        pal4::portable::GlesRenderer renderer;
     };
     std::map<std::string, LoadedSceneBundle> scene_catalog;
     std::map<std::string, Mv3Model> role_mv3_models;
+    std::map<std::string, UploadedRoleRenderCache> role_render_cache;
     std::filesystem::path original_game_dir;
+    std::string last_render_scene_key;
+    float last_render_yaw_deg{205.0f};
 
     std::string current_cpk{"q01"};
     std::string current_scn{"yn01a"};
@@ -229,6 +249,7 @@ struct ChapterHost final : ISceEngineServices {
     std::int32_t leader_role_id{0};
     std::uint32_t leader_nav_layer{0};
     bool user_input_enabled{true};
+    bool enforce_full_campaign{false};
     bool game_cleared{false};
     std::string ending_name;
     std::string active_bgm{"pi01.mp3"};
@@ -264,6 +285,7 @@ private:
     void RebuildCollisionAndSceneForLayer(std::uint32_t layer);
     bool CheckAndFireStepTriggers();
     bool TryLoadSceneFromOriginalGameDir(std::string_view cpk_name, std::string_view scn_name);
+    void EnsureRealSceneAssetsLoaded(const std::string& key);
 };
 
 }  // namespace pal3::portable

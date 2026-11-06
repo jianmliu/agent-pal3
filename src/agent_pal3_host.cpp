@@ -160,6 +160,7 @@ struct AgentPal3Session {
             << "\"nav_tile\":[" << nav_tile[0] << "," << nav_tile[1] << "],"
             << "\"position\":[" << host.movement_state.position[0] << ","
             << host.movement_state.position[1] << "," << host.movement_state.position[2] << "],"
+            << "\"rotation_yaw\":" << (host.movement_state.yaw * 57.2957795f) << ","
             << "\"mv3_pose_checksum\":" << host.leader_mv3_pose.pose_checksum << "},";
 
         // Party & Five-Element Taiji Formation + Favorability + Demon Sword
@@ -235,19 +236,43 @@ struct AgentPal3Session {
 
         // Scene NPCs & Objects
         out << "\"npcs\":[";
+        bool first_npc = true;
         for (std::size_t i = 0; i < host.scene_npcs.size(); ++i) {
             const auto& n = host.scene_npcs[i];
-            if (i > 0) out << ",";
+            if (!n.active) continue;
+            if (!first_npc) out << ",";
+            first_npc = false;
+            const float dist = std::hypot(n.position[0] - host.movement_state.position[0],
+                                          n.position[2] - host.movement_state.position[2]);
             out << "{\"id\":" << n.id << ",\"name\":\"" << EscapeJson(n.name)
-                << "\",\"layer\":" << n.nav_layer << ",\"position\":[" << n.position[0] << ","
+                << "\",\"layer\":" << n.nav_layer << ",\"distance\":" << dist
+                << ",\"position\":[" << n.position[0] << ","
                 << n.position[1] << "," << n.position[2] << "]}";
         }
         out << "],\"objects\":[";
+        bool first_obj = true;
         for (std::size_t i = 0; i < host.scene_objects.size(); ++i) {
             const auto& o = host.scene_objects[i];
-            if (i > 0) out << ",";
+            if (!o.active) continue;
+            if (!first_obj) out << ",";
+            first_obj = false;
+            std::string_view type_name = "object";
+            if (o.node_type == static_cast<std::uint16_t>(ScnNodeType::tile_trigger)) {
+                type_name = "tile_trigger";
+            } else if (o.node_type == static_cast<std::uint16_t>(ScnNodeType::ladder)) {
+                type_name = "ladder";
+            } else if (o.node_type == static_cast<std::uint16_t>(ScnNodeType::mechanism)) {
+                type_name = "mechanism";
+            } else if (o.node_type == static_cast<std::uint16_t>(ScnNodeType::aabb_trigger)) {
+                type_name = "aabb";
+            } else if (o.node_type == static_cast<std::uint16_t>(ScnNodeType::elevator)) {
+                type_name = "elevator";
+            }
+            const float dist = std::hypot(o.position[0] - host.movement_state.position[0],
+                                          o.position[2] - host.movement_state.position[2]);
             out << "{\"id\":" << o.id << ",\"name\":\"" << EscapeJson(o.name)
-                << "\",\"node_type\":" << o.node_type << ",\"layer\":" << o.nav_layer
+                << "\",\"node_type\":" << o.node_type << ",\"type_name\":\"" << type_name
+                << "\",\"layer\":" << o.nav_layer << ",\"distance\":" << dist
                 << ",\"cvd_anim_time\":" << o.cvd_anim_time_sec << ",\"position\":["
                 << o.position[0] << "," << o.position[1] << "," << o.position[2] << "]}";
         }
@@ -261,8 +286,30 @@ struct AgentPal3Session {
             << "\"max_round\":" << cs.max_round.value_or(0) << ","
             << "\"awaiting_role_id\":" << cs.awaiting_role_id << ","
             << "\"victories\":" << cs.total_victories << ","
-            << "\"combos_used\":" << cs.total_combos_used << ","
-            << "\"enemies\":[";
+            << "\"combos_used\":" << cs.total_combos_used << ",";
+        if (cs.active) {
+            out << "\"available_skills\":[";
+            bool first_sk = true;
+            std::vector<std::uint32_t> seen_skills;
+            for (const auto& m : host.party) {
+                if (!m.in_team) continue;
+                for (std::uint32_t sid : m.learned_skills) {
+                    if (std::find(seen_skills.begin(), seen_skills.end(), sid) != seen_skills.end()) {
+                        continue;
+                    }
+                    const auto* sk = host.database.FindSkill(sid);
+                    if (!sk) continue;
+                    seen_skills.push_back(sid);
+                    if (!first_sk) out << ",";
+                    first_sk = false;
+                    out << "{\"skill_id\":" << sk->skill_id << ",\"name\":\"" << EscapeJson(sk->name)
+                        << "\",\"element\":\"" << Pal3ElementName(sk->element) << "\",\"action\":\""
+                        << (sk->is_combo ? "combo" : "magic") << "\"}";
+                }
+            }
+            out << "],";
+        }
+        out << "\"enemies\":[";
         for (std::size_t i = 0; i < cs.enemies.size(); ++i) {
             const auto& e = cs.enemies[i];
             if (i > 0) out << ",";
@@ -277,8 +324,16 @@ struct AgentPal3Session {
         out << "\"minigame\":{"
             << "\"active\":" << (host.minigames.IsActive() ? "true" : "false") << ","
             << "\"kind\":\"" << Pal3MinigameKindName(ms.active_kind) << "\","
-            << "\"title\":\"" << EscapeJson(ms.title) << "\","
-            << "\"appraisals_passed\":" << ms.appraisals_passed << ","
+            << "\"title\":\"" << EscapeJson(ms.title) << "\",";
+        if (host.minigames.IsActive()) {
+            out << "\"prompt\":\"" << EscapeJson(ms.prompt) << "\",\"options\":[";
+            for (std::size_t i = 0; i < ms.options.size(); ++i) {
+                if (i > 0) out << ",";
+                out << "\"" << EscapeJson(ms.options[i]) << "\"";
+            }
+            out << "],";
+        }
+        out << "\"appraisals_passed\":" << ms.appraisals_passed << ","
             << "\"pawnshops_completed\":" << ms.pawnshops_completed << ","
             << "\"encampments_completed\":" << ms.encampments_completed << ","
             << "\"ski_runs_completed\":" << ms.ski_runs_completed << ","
@@ -315,7 +370,7 @@ struct AgentPal3Session {
         }
 
         try {
-            if (cmd == "observe") {
+            if (cmd == "observe" || cmd == "noop") {
                 last_event = "observed";
                 return BuildObservationJson(true);
             }
@@ -324,7 +379,7 @@ struct AgentPal3Session {
                 last_event = "reset";
                 return BuildObservationJson(true);
             }
-            if (cmd == "step") {
+            if (cmd == "step" || cmd == "wait") {
                 const std::uint32_t frames =
                     static_cast<std::uint32_t>(ExtractJsonNumber(line, "frames").value_or(1.0));
                 host.StepFrames(std::max(1u, frames));
@@ -431,6 +486,47 @@ struct AgentPal3Session {
                 last_event = mounted ? ("mounted_game_dir:" + dir) : "mount_game_dir_failed";
                 return BuildObservationJson(mounted, mounted ? "" : "game_dir does not exist");
             }
+            if (cmd == "render_frame") {
+                const std::string path =
+                    ExtractJsonString(line, "path").value_or("/tmp/agent-pal3-frame.bmp");
+                const int w = static_cast<int>(ExtractJsonNumber(line, "width").value_or(640.0));
+                const int h = static_cast<int>(ExtractJsonNumber(line, "height").value_or(360.0));
+                std::optional<float> yaw_opt;
+                if (auto yv = ExtractJsonNumber(line, "yaw")) {
+                    yaw_opt = static_cast<float>(*yv);
+                }
+                const float pitch =
+                    static_cast<float>(ExtractJsonNumber(line, "pitch").value_or(24.0));
+                const float dist =
+                    static_cast<float>(ExtractJsonNumber(line, "distance").value_or(96.0));
+                const bool ok = host.RenderFrameToBmp(path, w, h, yaw_opt, pitch, dist);
+                return std::string("{\"ok\":") + (ok ? "true" : "false") +
+                       ",\"event\":\"frame_rendered\",\"path\":\"" + EscapeJson(path) +
+                       "\",\"width\":" + std::to_string(w) + ",\"height\":" + std::to_string(h) +
+                       "}";
+            }
+            if (cmd == "render_substeps") {
+                const std::string prefix =
+                    ExtractJsonString(line, "prefix").value_or("/tmp/agent-pal3-sub");
+                const float from_x =
+                    static_cast<float>(ExtractJsonNumber(line, "from_x").value_or(0.0));
+                const float from_y =
+                    static_cast<float>(ExtractJsonNumber(line, "from_y").value_or(0.0));
+                const float from_z =
+                    static_cast<float>(ExtractJsonNumber(line, "from_z").value_or(0.0));
+                const float to_x =
+                    static_cast<float>(ExtractJsonNumber(line, "to_x").value_or(0.0));
+                const float to_y =
+                    static_cast<float>(ExtractJsonNumber(line, "to_y").value_or(0.0));
+                const float to_z =
+                    static_cast<float>(ExtractJsonNumber(line, "to_z").value_or(0.0));
+                const int w = static_cast<int>(ExtractJsonNumber(line, "width").value_or(512.0));
+                const int h = static_cast<int>(ExtractJsonNumber(line, "height").value_or(288.0));
+                const int max_sub =
+                    static_cast<int>(ExtractJsonNumber(line, "max_substeps").value_or(3.0));
+                return host.RenderSubstepsToBmp(
+                    prefix, from_x, from_y, from_z, to_x, to_y, to_z, w, h, max_sub);
+            }
             return BuildObservationJson(false, "unknown command: " + cmd);
         } catch (const std::exception& ex) {
             return BuildObservationJson(false, ex.what());
@@ -451,6 +547,8 @@ int main(int argc, char** argv) {
             session.mode = argv[++i];
         } else if (arg == "--game-dir" && i + 1 < argc) {
             game_dir = argv[++i];
+        } else if (arg == "--full-campaign") {
+            session.host.enforce_full_campaign = true;
         }
     }
 

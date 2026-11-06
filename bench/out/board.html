@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent-PAL3 Benchmark Leaderboard — 仙剑奇侠传三 (24 Chapters)</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #131a26;
+      --panel-alt: #192231;
+      --border: #28354a;
+      --text: #e6edf3;
+      --muted: #8b9bb4;
+      --accent: #38bdf8;
+      --gold: #f59e0b;
+      --jade: #10b981;
+      --purple: #a855f7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: radial-gradient(circle at 18% 0%, #162238 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      padding: 28px 36px 56px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 { font-size: 25px; margin: 0 0 6px; letter-spacing: 0.3px; }
+    p.sub { color: var(--muted); margin: 0; font-size: 13.5px; }
+    .nav-tabs { display: flex; gap: 10px; }
+    .nav-tab {
+      text-decoration: none;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-tab:hover { border-color: var(--accent); color: var(--accent); }
+    .nav-tab.active {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: #38bdf8;
+      color: #fff;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 26px;
+    }
+    .kpi-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 15px 18px;
+    }
+    .kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .kpi-val { font-size: 22px; font-weight: 700; color: #fff; }
+    .kpi-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+    h2 { font-size: 18px; margin: 28px 0 12px; color: #f1f5f9; }
+    .table-wrap {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow-x: auto;
+      margin-bottom: 28px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 11px 13px; text-align: left; border-bottom: 1px solid #1e293b; }
+    th { background: var(--panel-alt); color: #cbd5e1; font-weight: 600; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(56, 189, 248, 0.04); }
+    .badge { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .badge.pure { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); }
+    .badge.normal { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35); }
+    .badge.ok { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+    .badge.clean { background: rgba(34, 197, 94, 0.12); color: #86efac; }
+    .badge.warn { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+    .badge.act { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }
+    .replay-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 11px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .replay-btn:hover { filter: brightness(1.12); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <h1>⚔️ Agent-PAL3 仙剑奇侠传三 — 24 章全流程无头评测排行榜</h1>
+      <p class="sub">OpenPAL3 + OpenPAL4 C++20 Portable Runtime · 原版零售 CPK 3D 场景与角色纹理解码 · 双层 NAV 寻路 · 五灵太极阵合击 · 五大结局</p>
+    </div>
+    <div class="nav-tabs">
+      <a class="nav-tab active" href="board.html">📊 评测总榜 (Leaderboard)</a>
+      <a class="nav-tab" href="replay.html">🎬 交互式 3D 实机回放 (3D Replay)</a>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Pure 零先验全战役最佳成绩</div>
+      <div class="kpi-val" style="color:#38bdf8">123 步 / 84 轮</div>
+      <div class="kpi-sub">agy-cli:claude-opus-5-5-high · 1.46 步/轮 · 0 违规警告</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Normal Play-and-Fix 全战役成绩</div>
+      <div class="kpi-val" style="color:#c084fc">130 步 / 33 轮</div>
+      <div class="kpi-sub">agy-cli:claude-opus-5-5-high · 24/24 章全覆盖</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">原版 3D 场景与角色资产挂载</div>
+      <div class="kpi-val" style="color:#34d399">24 幕 .POL/.DDS + .MV3</div>
+      <div class="kpi-sub">Q01..Q13 & M01..M24 原版 CPK 实机软件光栅化</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">五灵珠共鸣与神剑重铸</div>
+      <div class="kpi-val" style="color:#fbbf24">圣灵魔剑 Lv.5</div>
+      <div class="kpi-sub">土·雷·风·火·水 五灵珠齐聚 + 17 场 Boss 战全胜</div>
+    </div>
+  </div>
+
+  <h2>🏆 Autonomous Agent 24-Chapter Playthrough Leaderboard</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Run ID</th>
+          <th>Model</th>
+          <th>Mode</th>
+          <th>Chapters</th>
+          <th>Tool Calls</th>
+          <th>Agent Turns</th>
+          <th>Calls/Turn</th>
+          <th>move_to</th>
+          <th>Divine Sword &amp; Five Pearls</th>
+          <th>Victories</th>
+          <th>Ending</th>
+          <th>Duration</th>
+          <th>Fairness Audit</th>
+          <th>Replay Verdict</th>
+          <th>3D Replay</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+        <td><code>opus-pure-20261106T011000</code></td>
+        <td><strong>agy-cli:claude-opus-5-5-high</strong></td>
+        <td><span class="badge pure">PURE (Zero-Prior)</span></td>
+        <td><strong>24 / 24</strong></td>
+        <td><strong>123</strong></td>
+        <td>84</td>
+        <td>1.46</td>
+        <td>33</td>
+        <td>圣灵魔剑 (Lv.6 · 土·雷·风·火·水)</td>
+        <td>18</td>
+        <td>完美结局·新仙界决战重楼（雪见相伴渝州）</td>
+        <td>380.2s</td>
+        <td><span class="badge clean">0 warnings</span></td>
+        <td><span class="badge ok" title="098cda9a246687113b18f74392c4d1bb5d01169f5afb63799d8302d0c639438b">VERIFIED ✓ (098cda9a)</span></td>
+        <td><a class="replay-btn" href="replay.html?run=opus-pure-20261106T011000">🎬 3D 回放</a></td>
+      </tr>
+<tr>
+        <td><code>opus-normal-20261106T010639</code></td>
+        <td><strong>agy-cli:claude-opus-5-5-high</strong></td>
+        <td><span class="badge normal">NORMAL (Play-and-Fix)</span></td>
+        <td><strong>24 / 24</strong></td>
+        <td><strong>130</strong></td>
+        <td>33</td>
+        <td>3.94</td>
+        <td>33</td>
+        <td>圣灵魔剑 (Lv.6 · 土·雷·风·火·水)</td>
+        <td>18</td>
+        <td>完美结局·新仙界决战重楼（雪见相伴渝州）</td>
+        <td>198.6s</td>
+        <td><span class="badge clean">0 warnings</span></td>
+        <td><span class="badge ok" title="4516063340c094b80893ef573bbae2bf036e98bc30d0d2221389392c4f09bd81">VERIFIED ✓ (45160633)</span></td>
+        <td><a class="replay-btn" href="replay.html?run=opus-normal-20261106T010639">🎬 3D 回放</a></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>🗺️ 《仙剑奇侠传三》原版 CPK 全五幕 24 章 3D 场景与主线里程碑矩阵</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Chapter</th>
+          <th>Act</th>
+          <th>Scene ID</th>
+          <th>Retail CPK &amp; 3D Mesh</th>
+          <th>Chapter Title</th>
+          <th>Key Gameplay &amp; Boss / Minigame Milestone</th>
+          <th>Story Var</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+      <td><strong>Ch.01</strong></td>
+      <td><span class="badge act">第一幕·渝州风起</span></td>
+      <td><code>q01/yn01a</code></td>
+      <td><code>Q01.cpk (b/b.pol)</code></td>
+      <td><strong>渝州·永安当与竹林初遇</strong></td>
+      <td>二楼账房紫砂壶鉴宝、结识唐雪见获魔剑、竹林重楼三招之约</td>
+      <td><code>10600</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.02</strong></td>
+      <td><span class="badge act">第一幕·渝州风起</span></td>
+      <td><code>m01/m01</code></td>
+      <td><code>M01.cpk (1/1.pol)</code></td>
+      <td><strong>璧山·双层机关栈道</strong></td>
+      <td>开启 _f01.cvd 石桥机关、击败霹雳堂头目</td>
+      <td><code>20500</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.03</strong></td>
+      <td><span class="badge act">第一幕·渝州风起</span></td>
+      <td><code>m01/m02</code></td>
+      <td><code>M02.cpk (1/1.pol)</code></td>
+      <td><strong>九龙坡·霹雳堂暗哨与小茅屋</strong></td>
+      <td>击败霹雳堂暗哨統領，突破九龙坡山口</td>
+      <td><code>21500</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.04</strong></td>
+      <td><span class="badge act">第一幕·渝州风起</span></td>
+      <td><code>m01/m03</code></td>
+      <td><code>M03.cpk (1/1.pol)</code></td>
+      <td><strong>大渡口·古墓龙葵破封</strong></td>
+      <td>千年剑灵龙葵苏醒入队，支援蓝葵/红葵双形态切换</td>
+      <td><code>23000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.05</strong></td>
+      <td><span class="badge act">第一幕·渝州风起</span></td>
+      <td><code>q01/binhua</code></td>
+      <td><code>Q02.cpk (q02/q02.pol)</code></td>
+      <td><strong>宾化城·永安当分号与聚首</strong></td>
+      <td>完成当铺经营小游戏、徐长卿与紫萱入队渡海</td>
+      <td><code>26000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.06</strong></td>
+      <td><span class="badge act">第二幕·蜀山寻灵</span></td>
+      <td><code>q03/q03</code></td>
+      <td><code>Q03.cpk (q03/q03.pol)</code></td>
+      <td><strong>蓬莱仙岛·御剑堂重围</strong></td>
+      <td>击败假扮商人的霹雳堂堂主罗如烈</td>
+      <td><code>30300</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.07</strong></td>
+      <td><span class="badge act">第二幕·蜀山寻灵</span></td>
+      <td><code>q01/tangjiabao</code></td>
+      <td><code>Q04.cpk (q04/q04.pol)</code></td>
+      <td><strong>唐家堡·演武堂夺帅</strong></td>
+      <td>演武堂击败勾结霹雳堂的唐门长老唐泰</td>
+      <td><code>32000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.08</strong></td>
+      <td><span class="badge act">第二幕·蜀山寻灵</span></td>
+      <td><code>m01/m06</code></td>
+      <td><code>M06.cpk (1/1.pol)</code></td>
+      <td><strong>德阳霹雳堂地牢·夺土灵珠</strong></td>
+      <td>诛灭总舵罗如烈，取得第一颗灵珠【土灵珠】净化魔剑</td>
+      <td><code>35000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.09</strong></td>
+      <td><span class="badge act">第二幕·蜀山寻灵</span></td>
+      <td><code>q03/anning</code></td>
+      <td><code>Q06.cpk (q06/q06.pol)</code></td>
+      <td><strong>安宁村·万仞孤峰篝火宿营</strong></td>
+      <td>触发宿营夜话小游戏，提升女主好感度</td>
+      <td><code>37000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.10</strong></td>
+      <td><span class="badge act">第二幕·蜀山寻灵</span></td>
+      <td><code>q03/guteng</code></td>
+      <td><code>M09.cpk (1/1.pol)</code></td>
+      <td><strong>古藤林·精精洞府与古藤仙人</strong></td>
+      <td>五灵太极阵合击击败古藤仙人</td>
+      <td><code>39000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.11</strong></td>
+      <td><span class="badge act">第二幕·蜀山寻灵</span></td>
+      <td><code>q03/shushan</code></td>
+      <td><code>Q08.cpk (q08/q08.pol)</code></td>
+      <td><strong>蜀山派无极阁·五长老托付</strong></td>
+      <td>清微等蜀山五长老托付寻齐五灵珠重任</td>
+      <td><code>40500</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.12</strong></td>
+      <td><span class="badge act">第二幕·蜀山寻灵</span></td>
+      <td><code>m01/m10</code></td>
+      <td><code>m10.cpk (1/1.pol)</code></td>
+      <td><strong>九顶山定仙峰·决战人面兽</strong></td>
+      <td>击败上古妖兽人面兽，取道前往雷州</td>
+      <td><code>41800</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.13</strong></td>
+      <td><span class="badge act">第三幕·六界裂隙</span></td>
+      <td><code>q01/leizhou</code></td>
+      <td><code>Q09.cpk (c/c.pol)</code></td>
+      <td><strong>雷州刺史府·平定云霆获雷灵珠</strong></td>
+      <td>承受云霆雷灵之力，取得第二颗灵珠【雷灵珠】</td>
+      <td><code>43000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.14</strong></td>
+      <td><span class="badge act">第三幕·六界裂隙</span></td>
+      <td><code>m18/shenmo</code></td>
+      <td><code>m11.cpk (1/1.pol)</code></td>
+      <td><strong>神魔之井·正反双层六界裂隙</strong></td>
+      <td>击败神魔之井守卫巨灵，登上天梯抵神界</td>
+      <td><code>45500</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.15</strong></td>
+      <td><span class="badge act">第三幕·六界裂隙</span></td>
+      <td><code>m18/shenjie</code></td>
+      <td><code>Q10.cpk (q10/q10.pol)</code></td>
+      <td><strong>神界天庭·夕瑶神树赐风灵珠</strong></td>
+      <td>重温飞蓬旧事，获夕瑶赠予第三颗灵珠【风灵珠】</td>
+      <td><code>47000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.16</strong></td>
+      <td><span class="badge act">第三幕·六界裂隙</span></td>
+      <td><code>m18/guijie</code></td>
+      <td><code>Q11.cpk (q11/q11.pol)</code></td>
+      <td><strong>鬼界黄泉路·无常殿破赵无延</strong></td>
+      <td>智破离魂使赵无延，闯入熔岩地狱救雪见</td>
+      <td><code>48500</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.17</strong></td>
+      <td><span class="badge act">第三幕·六界裂隙</span></td>
+      <td><code>m18/rongyan</code></td>
+      <td><code>M16.cpk (1/1.pol)</code></td>
+      <td><strong>熔岩地狱·诛火鬼王夺火灵珠</strong></td>
+      <td>击败火鬼王，取得第四颗灵珠【火灵珠】</td>
+      <td><code>49800</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.18</strong></td>
+      <td><span class="badge act">第四幕·锁妖集珠</span></td>
+      <td><code>m18/m18</code></td>
+      <td><code>M18.cpk (1/1.pol)</code></td>
+      <td><strong>蜀山锁妖塔·底层冰晶封印</strong></td>
+      <td>决战天妖皇，拔出飞蓬佩剑【镇妖剑】</td>
+      <td><code>65500</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.19</strong></td>
+      <td><span class="badge act">第四幕·锁妖集珠</span></td>
+      <td><code>q03/manzhou</code></td>
+      <td><code>Q13.cpk (q13/q13.pol)</code></td>
+      <td><strong>蛮州女娲庙与灵山青瓷鉴宝</strong></td>
+      <td>完成越窑青瓷碗鉴宝 + 击败灵山仙人洞水妖統領</td>
+      <td><code>69500</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.20</strong></td>
+      <td><span class="badge act">第四幕·锁妖集珠</span></td>
+      <td><code>m18/haidicheng</code></td>
+      <td><code>M21.cpk (1/1.pol)</code></td>
+      <td><strong>东海海底城·诛帝江神兽齐五灵</strong></td>
+      <td>击败帝江神兽获【水灵珠】，五灵珠全部齐聚</td>
+      <td><code>72000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.21</strong></td>
+      <td><span class="badge act">第五幕·剑冢仙界</span></td>
+      <td><code>m23/bingfeng</code></td>
+      <td><code>M22.cpk (1/1.pol)</code></td>
+      <td><strong>雪岭镇冰风谷·极速滑雪与御剑</strong></td>
+      <td>通关冰风谷滑雪 + 御剑飞行抵剑冢</td>
+      <td><code>76000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.22</strong></td>
+      <td><span class="badge act">第五幕·剑冢仙界</span></td>
+      <td><code>m23/jianzhong_outer</code></td>
+      <td><code>M22.cpk (2/2.pol)</code></td>
+      <td><strong>雷州剑冢外围·诛魔化罗如烈</strong></td>
+      <td>击败吸取五灵妖气的魔化罗如烈</td>
+      <td><code>79500</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.23</strong></td>
+      <td><span class="badge act">第五幕·剑冢仙界</span></td>
+      <td><code>m23/m23</code></td>
+      <td><code>M23.cpk (1/1.pol)</code></td>
+      <td><strong>剑冢铸剑厅·双剑重铸斩邪剑仙</strong></td>
+      <td>铸剑炉择一重铸【圣灵魔剑/镇妖剑】，斩灭邪剑仙获圣灵珠</td>
+      <td><code>90000</code></td>
+    </tr>
+<tr>
+      <td><strong>Ch.24</strong></td>
+      <td><span class="badge act">第五幕·剑冢仙界</span></td>
+      <td><code>m23/xinxianjie</code></td>
+      <td><code>M24.cpk (1/1.pol)</code></td>
+      <td><strong>新仙界·魔尊重楼终极决战</strong></td>
+      <td>新仙界击败重楼，按神剑与好感度触发五大结局</td>
+      <td><code>100000</code></td>
+    </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "test": "node tests/run-headless-bench.mjs",
-    "test:headless": "node tests/run-headless-bench.mjs --mode normal && node tests/run-headless-bench.mjs --mode pure"
+    "test:headless": "node tests/run-headless-bench.mjs --mode normal && node tests/run-headless-bench.mjs --mode pure",
+    "bench:normal": "node bench/run-argon.mjs --mode normal",
+    "bench:pure": "node bench/run-argon.mjs --mode pure",
+    "bench:verify": "node bench/verify.mjs",
+    "bench:render-frames": "node bench/render-frames.mjs",
+    "bench:board": "node bench/board.mjs"
   }
 }

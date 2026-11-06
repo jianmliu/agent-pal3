@@ -1,5 +1,6 @@
 #include "pal3/portable/scn_nav_model.h"
 #include "pal3/portable/sce_vm.h"
+#include "pal4/portable/dds_texture.h"
 
 #include <algorithm>
 #include <cmath>
@@ -809,6 +810,179 @@ pal4::portable::CollisionMesh ConvertNavFileToCollisionMesh(const NavFile& nav,
 // 3. .pol, .cvd, and .mv3 Binary Model Parsers & OpenPAL4 Scene Bridges
 // ============================================================================
 
+std::optional<pal4::portable::Texture> DecodePal3Texture(std::span<const std::uint8_t> bytes) {
+    if (bytes.size() < 18u) return std::nullopt;
+
+    auto downsample_if_needed = [](pal4::portable::Texture tex) -> pal4::portable::Texture {
+        while (tex.width > 256 && tex.height > 256 && (tex.width % 2) == 0 && (tex.height % 2) == 0) {
+            const unsigned nw = tex.width / 2;
+            const unsigned nh = tex.height / 2;
+            std::vector<std::uint8_t> dst(static_cast<std::size_t>(nw) * nh * 4u);
+            for (unsigned y = 0; y < nh; ++y) {
+                for (unsigned x = 0; x < nw; ++x) {
+                    const std::size_t i00 = (static_cast<std::size_t>(y * 2) * tex.width + (x * 2)) * 4u;
+                    const std::size_t i10 = i00 + 4u;
+                    const std::size_t i01 = i00 + static_cast<std::size_t>(tex.width) * 4u;
+                    const std::size_t i11 = i01 + 4u;
+                    const std::size_t out_i = (static_cast<std::size_t>(y) * nw + x) * 4u;
+                    for (unsigned c = 0; c < 4u; ++c) {
+                        const unsigned sum = static_cast<unsigned>(tex.rgba[i00 + c]) +
+                                             static_cast<unsigned>(tex.rgba[i10 + c]) +
+                                             static_cast<unsigned>(tex.rgba[i01 + c]) +
+                                             static_cast<unsigned>(tex.rgba[i11 + c]);
+                        dst[out_i + c] = static_cast<std::uint8_t>((sum + 2u) >> 2u);
+                    }
+                }
+            }
+            tex.width = nw;
+            tex.height = nh;
+            tex.rgba = std::move(dst);
+        }
+        return tex;
+    };
+
+    // 1. DDS Texture (`DDS `)
+    if (bytes.size() >= 128u && std::memcmp(bytes.data(), "DDS ", 4) == 0) {
+        try {
+            return downsample_if_needed(pal4::portable::DecodeDdsTexture(bytes));
+        } catch (...) {
+            auto read_u32 = [&](std::size_t off) -> std::uint32_t {
+                return static_cast<std::uint32_t>(bytes[off]) |
+                       (static_cast<std::uint32_t>(bytes[off + 1]) << 8u) |
+                       (static_cast<std::uint32_t>(bytes[off + 2]) << 16u) |
+                       (static_cast<std::uint32_t>(bytes[off + 3]) << 24u);
+            };
+            const unsigned h = read_u32(12);
+            const unsigned w = read_u32(16);
+            const unsigned pf_flags = read_u32(80);
+            const unsigned bpp = read_u32(88);
+            const unsigned rmask = read_u32(92);
+            if (w == 0 || h == 0 || w > 4096 || h > 4096 || (pf_flags & 0x40u) == 0u) {
+                return std::nullopt;
+            }
+            pal4::portable::Texture img;
+            img.width = w;
+            img.height = h;
+            img.rgba.resize(static_cast<std::size_t>(w) * h * 4u, 255u);
+            if (bpp == 24u && bytes.size() >= 128u + static_cast<std::size_t>(w) * h * 3u) {
+                for (std::size_t i = 0; i < static_cast<std::size_t>(w) * h; ++i) {
+                    img.rgba[i * 4 + 0] = bytes[128 + i * 3 + 2];
+                    img.rgba[i * 4 + 1] = bytes[128 + i * 3 + 1];
+                    img.rgba[i * 4 + 2] = bytes[128 + i * 3 + 0];
+                    img.rgba[i * 4 + 3] = 255u;
+                }
+                return downsample_if_needed(std::move(img));
+            }
+            if (bpp == 16u && bytes.size() >= 128u + static_cast<std::size_t>(w) * h * 2u) {
+                for (std::size_t i = 0; i < static_cast<std::size_t>(w) * h; ++i) {
+                    const std::uint16_t px = static_cast<std::uint16_t>(bytes[128 + i * 2]) |
+                                             (static_cast<std::uint16_t>(bytes[128 + i * 2 + 1]) << 8u);
+                    if (rmask == 0xF800u) {
+                        img.rgba[i * 4 + 0] = static_cast<std::uint8_t>(((px >> 11u) & 31u) * 255u / 31u);
+                        img.rgba[i * 4 + 1] = static_cast<std::uint8_t>(((px >> 5u) & 63u) * 255u / 63u);
+                        img.rgba[i * 4 + 2] = static_cast<std::uint8_t>((px & 31u) * 255u / 31u);
+                        img.rgba[i * 4 + 3] = 255u;
+                    } else if (rmask == 0x0F00u) {
+                        img.rgba[i * 4 + 0] = static_cast<std::uint8_t>(((px >> 8u) & 15u) * 17u);
+                        img.rgba[i * 4 + 1] = static_cast<std::uint8_t>(((px >> 4u) & 15u) * 17u);
+                        img.rgba[i * 4 + 2] = static_cast<std::uint8_t>((px & 15u) * 17u);
+                        img.rgba[i * 4 + 3] = static_cast<std::uint8_t>(((px >> 12u) & 15u) * 17u);
+                        if (img.rgba[i * 4 + 3] != 255u) img.alpha = true;
+                    } else {
+                        img.rgba[i * 4 + 0] = static_cast<std::uint8_t>(((px >> 10u) & 31u) * 255u / 31u);
+                        img.rgba[i * 4 + 1] = static_cast<std::uint8_t>(((px >> 5u) & 31u) * 255u / 31u);
+                        img.rgba[i * 4 + 2] = static_cast<std::uint8_t>((px & 31u) * 255u / 31u);
+                        img.rgba[i * 4 + 3] = (px & 0x8000u) ? 255u : 0u;
+                        if (img.rgba[i * 4 + 3] != 255u) img.alpha = true;
+                    }
+                }
+                return downsample_if_needed(std::move(img));
+            }
+            return std::nullopt;
+        }
+    }
+
+    // 2. TGA Texture (uncompressed TrueColor type 2 or RLE TrueColor type 10, 24/32-bit)
+    const std::uint8_t id_len = bytes[0];
+    const std::uint8_t cmap_type = bytes[1];
+    const std::uint8_t img_type = bytes[2];
+    const unsigned w = static_cast<unsigned>(bytes[12]) | (static_cast<unsigned>(bytes[13]) << 8u);
+    const unsigned h = static_cast<unsigned>(bytes[14]) | (static_cast<unsigned>(bytes[15]) << 8u);
+    const unsigned bpp = bytes[16];
+    const std::uint8_t desc = bytes[17];
+    if (cmap_type == 0u && (img_type == 2u || img_type == 10u) && (bpp == 24u || bpp == 32u) &&
+        w > 0u && w <= 4096u && h > 0u && h <= 4096u) {
+        const std::size_t bytes_per_px = bpp / 8u;
+        std::size_t pos = 18u + id_len;
+        if (pos > bytes.size()) return std::nullopt;
+
+        pal4::portable::Texture img;
+        img.width = w;
+        img.height = h;
+        const std::size_t total_px = static_cast<std::size_t>(w) * h;
+        std::vector<std::uint8_t> raw_rgba(total_px * 4u, 255u);
+
+        if (img_type == 2u) {
+            if (pos + total_px * bytes_per_px > bytes.size()) return std::nullopt;
+            for (std::size_t i = 0; i < total_px; ++i) {
+                raw_rgba[i * 4 + 0] = bytes[pos + 2];
+                raw_rgba[i * 4 + 1] = bytes[pos + 1];
+                raw_rgba[i * 4 + 2] = bytes[pos + 0];
+                raw_rgba[i * 4 + 3] = (bytes_per_px == 4u) ? bytes[pos + 3] : 255u;
+                if (raw_rgba[i * 4 + 3] != 255u) img.alpha = true;
+                pos += bytes_per_px;
+            }
+        } else {
+            std::size_t px_idx = 0;
+            while (px_idx < total_px && pos < bytes.size()) {
+                const std::uint8_t hdr = bytes[pos++];
+                const std::size_t run = static_cast<std::size_t>(hdr & 0x7Fu) + 1u;
+                if (hdr & 0x80u) {
+                    if (pos + bytes_per_px > bytes.size()) break;
+                    const std::uint8_t b = bytes[pos + 0];
+                    const std::uint8_t g = bytes[pos + 1];
+                    const std::uint8_t r = bytes[pos + 2];
+                    const std::uint8_t a = (bytes_per_px == 4u) ? bytes[pos + 3] : 255u;
+                    pos += bytes_per_px;
+                    if (a != 255u) img.alpha = true;
+                    for (std::size_t k = 0; k < run && px_idx < total_px; ++k, ++px_idx) {
+                        raw_rgba[px_idx * 4 + 0] = r;
+                        raw_rgba[px_idx * 4 + 1] = g;
+                        raw_rgba[px_idx * 4 + 2] = b;
+                        raw_rgba[px_idx * 4 + 3] = a;
+                    }
+                } else {
+                    for (std::size_t k = 0; k < run && px_idx < total_px; ++k, ++px_idx) {
+                        if (pos + bytes_per_px > bytes.size()) break;
+                        raw_rgba[px_idx * 4 + 0] = bytes[pos + 2];
+                        raw_rgba[px_idx * 4 + 1] = bytes[pos + 1];
+                        raw_rgba[px_idx * 4 + 2] = bytes[pos + 0];
+                        raw_rgba[px_idx * 4 + 3] = (bytes_per_px == 4u) ? bytes[pos + 3] : 255u;
+                        if (raw_rgba[px_idx * 4 + 3] != 255u) img.alpha = true;
+                        pos += bytes_per_px;
+                    }
+                }
+            }
+        }
+
+        const bool top_down = (desc & 0x20u) != 0u;
+        if (top_down) {
+            img.rgba = std::move(raw_rgba);
+        } else {
+            img.rgba.resize(total_px * 4u);
+            const std::size_t row_bytes = static_cast<std::size_t>(w) * 4u;
+            for (unsigned y = 0; y < h; ++y) {
+                std::memcpy(img.rgba.data() + static_cast<std::size_t>(y) * row_bytes,
+                            raw_rgba.data() + static_cast<std::size_t>(h - 1u - y) * row_bytes,
+                            row_bytes);
+            }
+        }
+        return downsample_if_needed(std::move(img));
+    }
+
+    return std::nullopt;
+}
+
 namespace {
 
 void EnsureDefaultTexture(pal4::portable::Scene& scene) {
@@ -826,7 +1000,10 @@ void EnsureDefaultTexture(pal4::portable::Scene& scene) {
 
 void AppendMeshDrawToScene(pal4::portable::Scene& scene,
                            const std::vector<pal4::portable::Vertex>& vertices,
-                           const std::vector<std::array<std::uint16_t, 3>>& triangles) {
+                           const std::vector<std::array<std::uint16_t, 3>>& triangles,
+                           int diffuse_tex_index = 0,
+                           const std::vector<std::array<std::uint16_t, 3>>* custom_uv_indices = nullptr,
+                           const std::vector<std::array<float, 2>>* custom_texcoords = nullptr) {
     if (vertices.empty() || triangles.empty()) return;
     EnsureDefaultTexture(scene);
     const bool bounds_was_empty = scene.vertices.empty();
@@ -834,15 +1011,63 @@ void AppendMeshDrawToScene(pal4::portable::Scene& scene,
     pal4::portable::Draw draw{};
     draw.first = static_cast<std::uint32_t>(scene.vertices.size());
     draw.count = static_cast<std::uint32_t>(triangles.size() * 3u);
-    draw.diffuse = 0;
+    draw.diffuse = diffuse_tex_index;
     draw.lightmap = -1;
     for (int c = 0; c < 4; ++c) draw.color[c] = 1.0f;
 
     std::array<float, 3> center_sum{0.0f, 0.0f, 0.0f};
     bool first_v = bounds_was_empty;
-    for (const auto& tri : triangles) {
+    for (std::size_t ti = 0; ti < triangles.size(); ++ti) {
+        const auto& tri = triangles[ti];
+        if (tri[0] >= vertices.size() || tri[1] >= vertices.size() || tri[2] >= vertices.size()) {
+            draw.count -= 3u;
+            continue;
+        }
+        const auto& p0 = vertices[tri[0]].position;
+        const auto& p1 = vertices[tri[1]].position;
+        const auto& p2 = vertices[tri[2]].position;
+        const float ex1 = p1[0] - p0[0], ey1 = p1[1] - p0[1], ez1 = p1[2] - p0[2];
+        const float ex2 = p2[0] - p0[0], ey2 = p2[1] - p0[1], ez2 = p2[2] - p0[2];
+        float nx = ey1 * ez2 - ez1 * ey2;
+        float ny = ez1 * ex2 - ex1 * ez2;
+        float nz = ex1 * ey2 - ey1 * ex2;
+        const float nlen = std::sqrt(nx * nx + ny * ny + nz * nz);
+        if (nlen > 1e-6f) {
+            nx /= nlen;
+            ny /= nlen;
+            nz /= nlen;
+        } else {
+            nx = 0.0f;
+            ny = 1.0f;
+            nz = 0.0f;
+        }
+        const float ndotl = nx * 0.42f + std::abs(ny) * 0.72f + nz * 0.42f;
+        const float shade = std::clamp(0.74f + 0.26f * ndotl, 0.62f, 1.0f);
+
         for (int k = 0; k < 3; ++k) {
-            const auto& v = vertices.at(tri[k]);
+            auto v = vertices[tri[k]];
+            if (custom_uv_indices && custom_texcoords && ti < custom_uv_indices->size()) {
+                const std::uint16_t uv_idx = (*custom_uv_indices)[ti][k];
+                if (uv_idx < custom_texcoords->size()) {
+                    v.uv0[0] = (*custom_texcoords)[uv_idx][0];
+                    v.uv0[1] = 1.0f - (*custom_texcoords)[uv_idx][1];
+                    v.uv1[0] = v.uv0[0];
+                    v.uv1[1] = v.uv0[1];
+                }
+            }
+            if (v.color[0] >= 0.99f && v.color[1] >= 0.99f && v.color[2] >= 0.99f) {
+                if (diffuse_tex_index > 0) {
+                    v.color[0] = shade;
+                    v.color[1] = shade;
+                    v.color[2] = shade;
+                } else {
+                    // Warm architectural stone/wood tint when using fallback white texture
+                    const float h_tint = std::clamp((v.position[1] + 20.0f) / 80.0f, 0.0f, 1.0f);
+                    v.color[0] = shade * (0.68f + 0.18f * h_tint);
+                    v.color[1] = shade * (0.66f + 0.16f * h_tint);
+                    v.color[2] = shade * (0.62f + 0.14f * h_tint);
+                }
+            }
             for (int axis = 0; axis < 3; ++axis) {
                 if (first_v) {
                     scene.minimum[axis] = v.position[axis];
@@ -857,9 +1082,11 @@ void AppendMeshDrawToScene(pal4::portable::Scene& scene,
             scene.vertices.push_back(v);
         }
     }
-    const float inv = 1.0f / static_cast<float>(draw.count);
-    scene.atomic_centers.push_back({center_sum[0] * inv, center_sum[1] * inv, center_sum[2] * inv});
-    scene.draws.push_back(draw);
+    if (draw.count > 0u) {
+        const float inv = 1.0f / static_cast<float>(draw.count);
+        scene.atomic_centers.push_back({center_sum[0] * inv, center_sum[1] * inv, center_sum[2] * inv});
+        scene.draws.push_back(draw);
+    }
 }
 
 }  // namespace
@@ -920,30 +1147,35 @@ PolModel ParsePolModel(std::span<const std::uint8_t> bytes) {
         }
         pol.meshes.reserve(mesh_cnt);
         for (std::uint32_t m_idx = 0; m_idx < mesh_cnt; ++m_idx) {
-            PolSubMesh m;
-            m.name = "mesh_" + std::to_string(m_idx);
-            m.aabb_min = {r.ReadF32(), r.ReadF32(), r.ReadF32()};
-            m.aabb_max = {r.ReadF32(), r.ReadF32(), r.ReadF32()};
+            const std::array<float, 3> aabb_min = {r.ReadF32(), r.ReadF32(), r.ReadF32()};
+            const std::array<float, 3> aabb_max = {r.ReadF32(), r.ReadF32(), r.ReadF32()};
             const std::uint32_t vtype = r.ReadU32();
             const std::uint32_t vcnt = r.ReadU32();
             if ((vtype & 0x1u) == 0u || (vtype & 0x10u) == 0u || vcnt > 262144u) {
                 throw std::runtime_error("unsupported real .pol vertex_type/vcnt");
             }
-            m.vertices.resize(vcnt);
+            std::vector<pal4::portable::Vertex> shared_verts(vcnt);
             for (std::uint32_t v = 0; v < vcnt; ++v) {
-                auto& vtx = m.vertices[v];
+                auto& vtx = shared_verts[v];
                 for (int c = 0; c < 3; ++c) vtx.position[c] = r.ReadF32();
                 if (vtype & 0x2u) r.Seek(r.pos + 12u);   // normal
                 if (vtype & 0x4u) r.Seek(r.pos + 4u);    // unknown4
                 if (vtype & 0x8u) r.Seek(r.pos + 4u);    // unknown8
-                vtx.uv0[0] = r.ReadF32();
-                vtx.uv0[1] = r.ReadF32();
+                const float u0 = r.ReadF32();
+                const float v0 = r.ReadF32();
                 if (vtype & 0x20u) {
-                    vtx.uv1[0] = r.ReadF32();
-                    vtx.uv1[1] = r.ReadF32();
+                    const float u1 = r.ReadF32();
+                    const float v1 = r.ReadF32();
+                    // In PAL3 2-texture .pol meshes, tex_coord2 is diffuse UV and tex_coord is lightmap UV
+                    vtx.uv0[0] = u1;
+                    vtx.uv0[1] = v1;
+                    vtx.uv1[0] = u0;
+                    vtx.uv1[1] = v0;
                 } else {
-                    vtx.uv1[0] = vtx.uv0[0];
-                    vtx.uv1[1] = vtx.uv0[1];
+                    vtx.uv0[0] = u0;
+                    vtx.uv0[1] = v0;
+                    vtx.uv1[0] = u0;
+                    vtx.uv1[1] = v0;
                 }
                 if (vtype & 0x40u) r.Seek(r.pos + 8u);
                 if (vtype & 0x80u) r.Seek(r.pos + 8u);
@@ -955,17 +1187,41 @@ PolModel ParsePolModel(std::span<const std::uint8_t> bytes) {
                 (void)r.ReadU32();  // use_alpha
                 r.Seek(r.pos + 68u);  // unknown_68 (16*f32) + unknown_float (f32)
                 const std::uint32_t tex_cnt = r.ReadU32();
+                std::string diffuse_tname;
                 for (std::uint32_t tc = 0; tc < tex_cnt; ++tc) {
                     const std::string tname = r.ReadFixedString(64);
-                    if (m.texture_name.empty() && !tname.empty()) m.texture_name = tname;
+                    if (!tname.empty()) diffuse_tname = tname;
                 }
                 r.Seek(r.pos + 12u);  // unknown2, unknown3, unknown4
                 const std::uint32_t tri_cnt = r.ReadU32();
+
+                PolSubMesh sm;
+                sm.name = "mesh_" + std::to_string(m_idx) + "_mat_" + std::to_string(mat);
+                sm.texture_name = diffuse_tname;
+                sm.aabb_min = aabb_min;
+                sm.aabb_max = aabb_max;
+
+                std::unordered_map<std::uint16_t, std::uint16_t> remap;
+                sm.triangles.reserve(tri_cnt);
                 for (std::uint32_t t = 0; t < tri_cnt; ++t) {
-                    m.triangles.push_back({r.ReadU16(), r.ReadU16(), r.ReadU16()});
+                    const std::uint16_t i0 = r.ReadU16();
+                    const std::uint16_t i1 = r.ReadU16();
+                    const std::uint16_t i2 = r.ReadU16();
+                    if (i0 >= vcnt || i1 >= vcnt || i2 >= vcnt) continue;
+                    auto map_idx = [&](std::uint16_t orig) -> std::uint16_t {
+                        auto it = remap.find(orig);
+                        if (it != remap.end()) return it->second;
+                        const auto next = static_cast<std::uint16_t>(sm.vertices.size());
+                        sm.vertices.push_back(shared_verts[orig]);
+                        remap.emplace(orig, next);
+                        return next;
+                    };
+                    sm.triangles.push_back({map_idx(i0), map_idx(i1), map_idx(i2)});
+                }
+                if (!sm.triangles.empty()) {
+                    pol.meshes.push_back(std::move(sm));
                 }
             }
-            pol.meshes.push_back(std::move(m));
         }
         return pol;
     } catch (...) {
@@ -1004,11 +1260,72 @@ PolModel ParsePolModel(std::span<const std::uint8_t> bytes) {
     return pol;
 }
 
+void NormalizePolModelToStageBounds(PolModel& pol, float target_half_span) {
+    float min_x = std::numeric_limits<float>::infinity();
+    float min_y = std::numeric_limits<float>::infinity();
+    float min_z = std::numeric_limits<float>::infinity();
+    float max_x = -std::numeric_limits<float>::infinity();
+    float max_y = -std::numeric_limits<float>::infinity();
+    float max_z = -std::numeric_limits<float>::infinity();
+    std::vector<float> y_samples;
+
+    for (const auto& sm : pol.meshes) {
+        for (const auto& v : sm.vertices) {
+            if (!std::isfinite(v.position[0]) || !std::isfinite(v.position[1]) || !std::isfinite(v.position[2])) {
+                continue;
+            }
+            if (std::abs(v.position[0]) > 25000.0f || std::abs(v.position[2]) > 25000.0f) continue;
+            min_x = std::min(min_x, v.position[0]);
+            min_y = std::min(min_y, v.position[1]);
+            min_z = std::min(min_z, v.position[2]);
+            max_x = std::max(max_x, v.position[0]);
+            max_y = std::max(max_y, v.position[1]);
+            max_z = std::max(max_z, v.position[2]);
+            if (y_samples.size() < 4096) y_samples.push_back(v.position[1]);
+        }
+    }
+    if (!std::isfinite(min_x) || !std::isfinite(max_x)) return;
+
+    const float span_x = std::max(1.0f, max_x - min_x);
+    const float span_z = std::max(1.0f, max_z - min_z);
+    const float max_horiz = std::max(span_x, span_z);
+    const float scale = (2.0f * target_half_span) / max_horiz;
+    const float cx = 0.5f * (min_x + max_x);
+    const float cz = 0.5f * (min_z + max_z);
+    float base_y = min_y;
+    if (!y_samples.empty()) {
+        std::sort(y_samples.begin(), y_samples.end());
+        base_y = y_samples[y_samples.size() / 6];
+    }
+
+    for (auto& sm : pol.meshes) {
+        for (auto& v : sm.vertices) {
+            v.position[0] = (v.position[0] - cx) * scale;
+            v.position[1] = (v.position[1] - base_y) * scale;
+            v.position[2] = (v.position[2] - cz) * scale;
+        }
+    }
+}
+
 pal4::portable::Scene ConvertPolToPortableScene(const PolModel& pol) {
     pal4::portable::Scene scene;
     EnsureDefaultTexture(scene);
+    std::unordered_map<std::string, int> tex_index_by_name;
     for (const auto& sm : pol.meshes) {
-        AppendMeshDrawToScene(scene, sm.vertices, sm.triangles);
+        int tex_idx = 0;
+        if (sm.decoded_texture && sm.decoded_texture->width > 0 && sm.decoded_texture->height > 0 &&
+            !sm.decoded_texture->rgba.empty()) {
+            const std::string key = sm.texture_name.empty() ? sm.name : sm.texture_name;
+            auto it = tex_index_by_name.find(key);
+            if (it != tex_index_by_name.end()) {
+                tex_idx = it->second;
+            } else {
+                tex_idx = static_cast<int>(scene.textures.size());
+                scene.textures.push_back(*sm.decoded_texture);
+                tex_index_by_name.emplace(key, tex_idx);
+            }
+        }
+        AppendMeshDrawToScene(scene, sm.vertices, sm.triangles, tex_idx);
     }
     return scene;
 }
@@ -1404,10 +1721,11 @@ Mv3Model ParseMv3Model(std::span<const std::uint8_t> bytes) {
                         const std::uint16_t i0 = r.ReadU16();
                         const std::uint16_t i1 = r.ReadU16();
                         const std::uint16_t i2 = r.ReadU16();
-                        (void)r.ReadU16();
-                        (void)r.ReadU16();
-                        (void)r.ReadU16();
+                        const std::uint16_t uv0 = r.ReadU16();
+                        const std::uint16_t uv1 = r.ReadU16();
+                        const std::uint16_t uv2 = r.ReadU16();
                         mv3.triangles.push_back({i0, i1, i2});
+                        mv3.triangle_uv_indices.push_back({uv0, uv1, uv2});
                     }
                     const std::uint32_t udata_cnt = r.ReadU32();
                     r.Seek(r.pos + static_cast<std::size_t>(udata_cnt) * 4u);
@@ -1514,9 +1832,38 @@ pal4::portable::Scene ConvertMv3ToPortableScene(const Mv3Model& mv3,
     const auto pose = EvaluateMv3Pose(mv3, time_sec, hold_at_mark);
     pal4::portable::Scene scene;
     EnsureDefaultTexture(scene);
+    int tex_idx = 0;
+    if (mv3.decoded_texture && mv3.decoded_texture->width > 0 && mv3.decoded_texture->height > 0 &&
+        !mv3.decoded_texture->rgba.empty()) {
+        tex_idx = static_cast<int>(scene.textures.size());
+        scene.textures.push_back(*mv3.decoded_texture);
+    }
     std::vector<pal4::portable::Vertex> verts(pose.interpolated_positions.size());
+    float min_y = std::numeric_limits<float>::infinity();
+    float max_y = -std::numeric_limits<float>::infinity();
+    float cx = 0.0f;
+    float cz = 0.0f;
+    for (const auto& p : pose.interpolated_positions) {
+        min_y = std::min(min_y, p[1]);
+        max_y = std::max(max_y, p[1]);
+        cx += p[0];
+        cz += p[2];
+    }
+    if (!pose.interpolated_positions.empty()) {
+        cx /= static_cast<float>(pose.interpolated_positions.size());
+        cz /= static_cast<float>(pose.interpolated_positions.size());
+    }
+    const bool is_real_mv3 = (mv3.frames.size() > 3u && (max_y - min_y) > 5.0f);
+    const float target_h = (mv3.texture_name.find("109") != std::string::npos) ? 7.5f : 13.5f;
+    const float scale = is_real_mv3 ? (target_h / (max_y - min_y)) : 1.0f;
+    const float y_off = is_real_mv3 ? min_y : 0.0f;
+    const float x_off = is_real_mv3 ? cx : 0.0f;
+    const float z_off = is_real_mv3 ? cz : 0.0f;
+
     for (std::size_t i = 0; i < pose.interpolated_positions.size(); ++i) {
-        for (int c = 0; c < 3; ++c) verts[i].position[c] = pose.interpolated_positions[i][c];
+        verts[i].position[0] = (pose.interpolated_positions[i][0] - x_off) * scale;
+        verts[i].position[1] = (pose.interpolated_positions[i][1] - y_off) * scale;
+        verts[i].position[2] = (pose.interpolated_positions[i][2] - z_off) * scale;
         const auto uv = (i < mv3.texcoords.size()) ? mv3.texcoords[i]
                                                    : std::array<float, 2>{0.0f, 0.0f};
         verts[i].uv0[0] = uv[0];
@@ -1525,7 +1872,9 @@ pal4::portable::Scene ConvertMv3ToPortableScene(const Mv3Model& mv3,
         verts[i].uv1[1] = uv[1];
         for (int c = 0; c < 4; ++c) verts[i].color[c] = 1.0f;
     }
-    AppendMeshDrawToScene(scene, verts, mv3.triangles);
+    const auto* custom_uvs =
+        (mv3.triangle_uv_indices.size() == mv3.triangles.size()) ? &mv3.triangle_uv_indices : nullptr;
+    AppendMeshDrawToScene(scene, verts, mv3.triangles, tex_idx, custom_uvs, &mv3.texcoords);
     return scene;
 }
 

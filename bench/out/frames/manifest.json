@@ -1,0 +1,2263 @@
+{
+  "width": 512,
+  "height": 288,
+  "generatedAt": "2026-11-06T02:31:41.054Z",
+  "byPos": {
+    "q01/yn01a@景天@0,0,0": "f_001_q01_yn01a.jpg",
+    "q01/yn01a@景天@32,0,32": "f_002_q01_yn01a.jpg",
+    "q01/yn01a@景天@32,24,32": "f_003_q01_yn01a.jpg",
+    "q01/yn01a@景天@-32,0,24": "f_004_q01_yn01a.jpg",
+    "q01/yn01a@景天@0,0,-40": "f_005_q01_yn01a.jpg",
+    "m01/m01@景天@0,0,0": "f_006_m01_m01.jpg",
+    "m01/m01@景天@32,0,16": "f_007_m01_m01.jpg",
+    "m01/m01@景天@32,0,-32": "f_008_m01_m01.jpg",
+    "m01/m01@景天@8,0,-16": "f_009_m01_m01.jpg",
+    "m01/m02@景天@0,0,0": "f_010_m01_m02.jpg",
+    "m01/m02@景天@0,0,-16": "f_011_m01_m02.jpg",
+    "m01/m03@景天@0,0,0": "f_012_m01_m03.jpg",
+    "m01/m03@景天@0,0,-16": "f_013_m01_m03.jpg",
+    "q01/binhua@景天@0,0,0": "f_014_q01_binhua.jpg",
+    "q01/binhua@景天@24,0,8": "f_015_q01_binhua.jpg",
+    "q01/binhua@景天@-24,0,-16": "f_016_q01_binhua.jpg",
+    "q03/q03@景天@0,0,0": "f_017_q03_q03.jpg",
+    "q03/q03@景天@-24,0,8": "f_018_q03_q03.jpg",
+    "q01/tangjiabao@景天@0,0,0": "f_019_q01_tangjiabao.jpg",
+    "q01/tangjiabao@景天@0,0,-16": "f_020_q01_tangjiabao.jpg",
+    "m01/m06@景天@0,0,0": "f_021_m01_m06.jpg",
+    "m01/m06@景天@0,0,-16": "f_022_m01_m06.jpg",
+    "q03/anning@景天@0,0,0": "f_023_q03_anning.jpg",
+    "q03/anning@景天@0,0,-16": "f_024_q03_anning.jpg",
+    "q03/guteng@景天@0,0,0": "f_025_q03_guteng.jpg",
+    "q03/guteng@景天@0,0,-16": "f_026_q03_guteng.jpg",
+    "q03/shushan@景天@0,0,0": "f_027_q03_shushan.jpg",
+    "q03/shushan@景天@0,0,-16": "f_028_q03_shushan.jpg",
+    "m01/m10@景天@0,0,0": "f_029_m01_m10.jpg",
+    "m01/m10@景天@0,0,-16": "f_030_m01_m10.jpg",
+    "q01/leizhou@景天@0,0,0": "f_031_q01_leizhou.jpg",
+    "q01/leizhou@景天@0,0,-16": "f_032_q01_leizhou.jpg",
+    "m18/shenmo@景天@0,0,0": "f_033_m18_shenmo.jpg",
+    "m18/shenmo@景天@0,0,-16": "f_034_m18_shenmo.jpg",
+    "m18/shenjie@景天@0,0,0": "f_035_m18_shenjie.jpg",
+    "m18/shenjie@景天@0,0,-16": "f_036_m18_shenjie.jpg",
+    "m18/guijie@景天@0,0,0": "f_037_m18_guijie.jpg",
+    "m18/guijie@景天@0,0,-16": "f_038_m18_guijie.jpg",
+    "m18/rongyan@景天@0,0,0": "f_039_m18_rongyan.jpg",
+    "m18/rongyan@景天@0,0,-16": "f_040_m18_rongyan.jpg",
+    "m18/m18@景天@0,0,0": "f_041_m18_m18.jpg",
+    "m18/m18@景天@8,0,8": "f_042_m18_m18.jpg",
+    "m18/m18@景天@40,24,40": "f_043_m18_m18.jpg",
+    "m18/m18@景天@-32,24,48": "f_044_m18_m18.jpg",
+    "q03/manzhou@景天@0,0,0": "f_045_q03_manzhou.jpg",
+    "q03/manzhou@景天@24,0,8": "f_046_q03_manzhou.jpg",
+    "q03/manzhou@景天@-16,0,-16": "f_047_q03_manzhou.jpg",
+    "m18/haidicheng@景天@0,0,0": "f_048_m18_haidicheng.jpg",
+    "m18/haidicheng@景天@0,0,-16": "f_049_m18_haidicheng.jpg",
+    "m23/bingfeng@景天@0,0,0": "f_050_m23_bingfeng.jpg",
+    "m23/bingfeng@景天@0,0,-16": "f_051_m23_bingfeng.jpg",
+    "m23/jianzhong_outer@景天@0,0,0": "f_052_m23_jianzhong_outer.jpg",
+    "m23/jianzhong_outer@景天@0,0,-16": "f_053_m23_jianzhong_outer.jpg",
+    "m23/m23@景天@0,0,0": "f_054_m23_m23.jpg",
+    "m23/m23@景天@32,0,-32": "f_055_m23_m23.jpg",
+    "m23/xinxianjie@景天@0,0,0": "f_056_m23_xinxianjie.jpg",
+    "m23/xinxianjie@景天@0,0,-16": "f_057_m23_xinxianjie.jpg",
+    "q01/yn01a@景天@40,24,40": "f_058_q01_yn01a.jpg",
+    "q01/yn01a@景天@0,0,-48": "f_059_q01_yn01a.jpg",
+    "m01/m01@景天@0,0,-16": "f_060_m01_m01.jpg",
+    "m01/m02@景天@0,0,-24": "f_061_m01_m02.jpg",
+    "m01/m03@景天@0,0,-24": "f_062_m01_m03.jpg",
+    "q01/binhua@景天@24,0,16": "f_063_q01_binhua.jpg",
+    "q01/tangjiabao@景天@0,0,-24": "f_064_q01_tangjiabao.jpg",
+    "m01/m06@景天@0,0,-24": "f_065_m01_m06.jpg",
+    "q03/guteng@景天@0,0,-24": "f_066_q03_guteng.jpg",
+    "m01/m10@景天@0,0,-24": "f_067_m01_m10.jpg",
+    "q01/leizhou@景天@0,0,-24": "f_068_q01_leizhou.jpg",
+    "m18/shenmo@景天@0,0,-24": "f_069_m18_shenmo.jpg",
+    "m18/guijie@景天@0,0,-24": "f_070_m18_guijie.jpg",
+    "m18/rongyan@景天@0,0,-24": "f_071_m18_rongyan.jpg",
+    "q03/manzhou@景天@-16,0,-24": "f_072_q03_manzhou.jpg",
+    "m18/haidicheng@景天@0,0,-24": "f_073_m18_haidicheng.jpg",
+    "m23/jianzhong_outer@景天@0,0,-24": "f_074_m23_jianzhong_outer.jpg",
+    "m23/m23@景天@0,0,16": "f_075_m23_m23.jpg",
+    "m23/xinxianjie@景天@0,0,-24": "f_076_m23_xinxianjie.jpg"
+  },
+  "bySceneLeader": {
+    "q01/yn01a@景天": "f_001_q01_yn01a.jpg",
+    "m01/m01@景天": "f_006_m01_m01.jpg",
+    "m01/m02@景天": "f_010_m01_m02.jpg",
+    "m01/m03@景天": "f_012_m01_m03.jpg",
+    "q01/binhua@景天": "f_014_q01_binhua.jpg",
+    "q03/q03@景天": "f_017_q03_q03.jpg",
+    "q01/tangjiabao@景天": "f_019_q01_tangjiabao.jpg",
+    "m01/m06@景天": "f_021_m01_m06.jpg",
+    "q03/anning@景天": "f_023_q03_anning.jpg",
+    "q03/guteng@景天": "f_025_q03_guteng.jpg",
+    "q03/shushan@景天": "f_027_q03_shushan.jpg",
+    "m01/m10@景天": "f_029_m01_m10.jpg",
+    "q01/leizhou@景天": "f_031_q01_leizhou.jpg",
+    "m18/shenmo@景天": "f_033_m18_shenmo.jpg",
+    "m18/shenjie@景天": "f_035_m18_shenjie.jpg",
+    "m18/guijie@景天": "f_037_m18_guijie.jpg",
+    "m18/rongyan@景天": "f_039_m18_rongyan.jpg",
+    "m18/m18@景天": "f_041_m18_m18.jpg",
+    "q03/manzhou@景天": "f_045_q03_manzhou.jpg",
+    "m18/haidicheng@景天": "f_048_m18_haidicheng.jpg",
+    "m23/bingfeng@景天": "f_050_m23_bingfeng.jpg",
+    "m23/jianzhong_outer@景天": "f_052_m23_jianzhong_outer.jpg",
+    "m23/m23@景天": "f_054_m23_m23.jpg",
+    "m23/xinxianjie@景天": "f_056_m23_xinxianjie.jpg"
+  },
+  "byScene": {
+    "q01/yn01a": "f_001_q01_yn01a.jpg",
+    "m01/m01": "f_006_m01_m01.jpg",
+    "m01/m02": "f_010_m01_m02.jpg",
+    "m01/m03": "f_012_m01_m03.jpg",
+    "q01/binhua": "f_014_q01_binhua.jpg",
+    "q03/q03": "f_017_q03_q03.jpg",
+    "q01/tangjiabao": "f_019_q01_tangjiabao.jpg",
+    "m01/m06": "f_021_m01_m06.jpg",
+    "q03/anning": "f_023_q03_anning.jpg",
+    "q03/guteng": "f_025_q03_guteng.jpg",
+    "q03/shushan": "f_027_q03_shushan.jpg",
+    "m01/m10": "f_029_m01_m10.jpg",
+    "q01/leizhou": "f_031_q01_leizhou.jpg",
+    "m18/shenmo": "f_033_m18_shenmo.jpg",
+    "m18/shenjie": "f_035_m18_shenjie.jpg",
+    "m18/guijie": "f_037_m18_guijie.jpg",
+    "m18/rongyan": "f_039_m18_rongyan.jpg",
+    "m18/m18": "f_041_m18_m18.jpg",
+    "q03/manzhou": "f_045_q03_manzhou.jpg",
+    "m18/haidicheng": "f_048_m18_haidicheng.jpg",
+    "m23/bingfeng": "f_050_m23_bingfeng.jpg",
+    "m23/jianzhong_outer": "f_052_m23_jianzhong_outer.jpg",
+    "m23/m23": "f_054_m23_m23.jpg",
+    "m23/xinxianjie": "f_056_m23_xinxianjie.jpg"
+  },
+  "byWorld": {
+    "q01": "f_001_q01_yn01a.jpg",
+    "m01": "f_006_m01_m01.jpg",
+    "q03": "f_017_q03_q03.jpg",
+    "m18": "f_033_m18_shenmo.jpg",
+    "m23": "f_050_m23_bingfeng.jpg"
+  },
+  "substepsByStep": {
+    "1": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          10,
+          0,
+          10
+        ],
+        "yaw": 45,
+        "img": "s_opus-pure_001_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          20,
+          0,
+          20
+        ],
+        "yaw": 45,
+        "img": "s_opus-pure_001_2_q01_yn01a.jpg"
+      }
+    ],
+    "4": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          21.3,
+          20,
+          35
+        ],
+        "yaw": -105,
+        "img": "s_opus-norm_004_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          2.5,
+          20,
+          30
+        ],
+        "yaw": -105,
+        "img": "s_opus-norm_004_2_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -16.2,
+          20,
+          25
+        ],
+        "yaw": -105,
+        "img": "s_opus-norm_004_3_q01_yn01a.jpg"
+      }
+    ],
+    "6": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          14,
+          0,
+          27.7
+        ],
+        "yaw": -99,
+        "img": "s_opus-pure_006_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -2.3,
+          0,
+          25.2
+        ],
+        "yaw": -99,
+        "img": "s_opus-pure_006_2_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -18.7,
+          0,
+          22.6
+        ],
+        "yaw": -99,
+        "img": "s_opus-pure_006_3_q01_yn01a.jpg"
+      }
+    ],
+    "8": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -26.2,
+          0,
+          5
+        ],
+        "yaw": 150,
+        "img": "s_opus-pure_008_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -17.5,
+          0,
+          -10
+        ],
+        "yaw": 150,
+        "img": "s_opus-pure_008_2_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -8.7,
+          0,
+          -25
+        ],
+        "yaw": 150,
+        "img": "s_opus-pure_008_3_q01_yn01a.jpg"
+      }
+    ],
+    "14": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          0,
+          0,
+          -51.7
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_014_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          0,
+          0,
+          -63.3
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_014_2_q01_yn01a.jpg"
+      }
+    ],
+    "15": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          10,
+          0,
+          5
+        ],
+        "yaw": 63,
+        "img": "s_opus-pure_015_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          20,
+          0,
+          10
+        ],
+        "yaw": 63,
+        "img": "s_opus-pure_015_2_m01_m01.jpg"
+      }
+    ],
+    "17": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          31.7,
+          0,
+          0
+        ],
+        "yaw": 174,
+        "img": "s_opus-pure_017_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          33.3,
+          0,
+          -15
+        ],
+        "yaw": 174,
+        "img": "s_opus-pure_017_2_m01_m01.jpg"
+      }
+    ],
+    "19": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          25,
+          0,
+          -26.7
+        ],
+        "yaw": -72,
+        "img": "s_opus-pure_019_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          15,
+          0,
+          -23.3
+        ],
+        "yaw": -72,
+        "img": "s_opus-pure_019_2_m01_m01.jpg"
+      }
+    ],
+    "22": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          15,
+          0,
+          -23.3
+        ],
+        "yaw": 108,
+        "img": "s_opus-pure_022_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          25,
+          0,
+          -26.7
+        ],
+        "yaw": 108,
+        "img": "s_opus-pure_022_2_m01_m01.jpg"
+      }
+    ],
+    "24": [
+      {
+        "w": "m01",
+        "sc": "m02",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_024_1_m01_m02.jpg"
+      }
+    ],
+    "25": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          11.7,
+          0,
+          -25
+        ],
+        "yaw": 113,
+        "img": "s_opus-norm_025_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          23.3,
+          0,
+          -30
+        ],
+        "yaw": 113,
+        "img": "s_opus-norm_025_2_m01_m01.jpg"
+      }
+    ],
+    "27": [
+      {
+        "w": "m01",
+        "sc": "m02",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_027_1_m01_m02.jpg"
+      }
+    ],
+    "28": [
+      {
+        "w": "m01",
+        "sc": "m03",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_028_1_m01_m03.jpg"
+      }
+    ],
+    "30": [
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          10,
+          0,
+          5
+        ],
+        "yaw": 63,
+        "img": "s_opus-pure_030_1_q01_binhua.jpg"
+      }
+    ],
+    "32": [
+      {
+        "w": "m01",
+        "sc": "m03",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_032_1_m01_m03.jpg"
+      }
+    ],
+    "33": [
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          5,
+          0,
+          1.7
+        ],
+        "yaw": -119,
+        "img": "s_opus-pure_033_1_q01_binhua.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          -10,
+          0,
+          -6.7
+        ],
+        "yaw": -119,
+        "img": "s_opus-pure_033_2_q01_binhua.jpg"
+      }
+    ],
+    "34": [
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          10,
+          0,
+          7.5
+        ],
+        "yaw": 53,
+        "img": "s_opus-norm_034_1_q01_binhua.jpg"
+      }
+    ],
+    "35": [
+      {
+        "w": "q03",
+        "sc": "q03",
+        "p": [
+          -12.5,
+          0,
+          2.5
+        ],
+        "yaw": -79,
+        "img": "s_opus-pure_035_1_q03_q03.jpg"
+      }
+    ],
+    "37": [
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          5,
+          0,
+          3.3
+        ],
+        "yaw": -128,
+        "img": "s_opus-norm_037_1_q01_binhua.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          -10,
+          0,
+          -8.3
+        ],
+        "yaw": -128,
+        "img": "s_opus-norm_037_2_q01_binhua.jpg"
+      }
+    ],
+    "40": [
+      {
+        "w": "q01",
+        "sc": "tangjiabao",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_040_1_q01_tangjiabao.jpg"
+      }
+    ],
+    "44": [
+      {
+        "w": "m01",
+        "sc": "m06",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_044_1_m01_m06.jpg"
+      }
+    ],
+    "45": [
+      {
+        "w": "q01",
+        "sc": "tangjiabao",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_045_1_q01_tangjiabao.jpg"
+      }
+    ],
+    "48": [
+      {
+        "w": "q03",
+        "sc": "anning",
+        "p": [
+          0,
+          0,
+          -7.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_048_1_q03_anning.jpg"
+      }
+    ],
+    "49": [
+      {
+        "w": "m01",
+        "sc": "m06",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_049_1_m01_m06.jpg"
+      }
+    ],
+    "51": [
+      {
+        "w": "q03",
+        "sc": "guteng",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_051_1_q03_guteng.jpg"
+      }
+    ],
+    "53": [
+      {
+        "w": "q03",
+        "sc": "anning",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_053_1_q03_anning.jpg"
+      }
+    ],
+    "56": [
+      {
+        "w": "q03",
+        "sc": "shushan",
+        "p": [
+          0,
+          0,
+          -7.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_056_1_q03_shushan.jpg"
+      }
+    ],
+    "58": [
+      {
+        "w": "m01",
+        "sc": "m10",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_058_1_m01_m10.jpg"
+      }
+    ],
+    "60": [
+      {
+        "w": "q03",
+        "sc": "shushan",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_060_1_q03_shushan.jpg"
+      }
+    ],
+    "62": [
+      {
+        "w": "q01",
+        "sc": "leizhou",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_062_1_q01_leizhou.jpg"
+      }
+    ],
+    "66": [
+      {
+        "w": "m18",
+        "sc": "shenmo",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_066_1_m18_shenmo.jpg"
+      }
+    ],
+    "70": [
+      {
+        "w": "m18",
+        "sc": "shenjie",
+        "p": [
+          0,
+          0,
+          -7.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_070_1_m18_shenjie.jpg"
+      }
+    ],
+    "71": [
+      {
+        "w": "m18",
+        "sc": "shenmo",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_071_1_m18_shenmo.jpg"
+      }
+    ],
+    "72": [
+      {
+        "w": "m18",
+        "sc": "guijie",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_072_1_m18_guijie.jpg"
+      }
+    ],
+    "76": [
+      {
+        "w": "m18",
+        "sc": "rongyan",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_076_1_m18_rongyan.jpg"
+      }
+    ],
+    "78": [
+      {
+        "w": "m18",
+        "sc": "guijie",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_078_1_m18_guijie.jpg"
+      }
+    ],
+    "81": [
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          5,
+          0,
+          5
+        ],
+        "yaw": 45,
+        "img": "s_opus-pure_081_1_m18_m18.jpg"
+      }
+    ],
+    "82": [
+      {
+        "w": "m18",
+        "sc": "rongyan",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_082_1_m18_rongyan.jpg"
+      }
+    ],
+    "83": [
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          19.8,
+          20,
+          38.5
+        ],
+        "yaw": -83,
+        "img": "s_opus-pure_083_1_m18_m18.jpg"
+      },
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          3.2,
+          20,
+          40.7
+        ],
+        "yaw": -83,
+        "img": "s_opus-pure_083_2_m18_m18.jpg"
+      },
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          -13.4,
+          20,
+          42.8
+        ],
+        "yaw": -83,
+        "img": "s_opus-pure_083_3_m18_m18.jpg"
+      }
+    ],
+    "87": [
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          10,
+          0,
+          2.5
+        ],
+        "yaw": 76,
+        "img": "s_opus-pure_087_1_q03_manzhou.jpg"
+      }
+    ],
+    "89": [
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          18.5,
+          20,
+          38.5
+        ],
+        "yaw": -83,
+        "img": "s_opus-norm_089_1_m18_m18.jpg"
+      },
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          0.7,
+          20,
+          40.7
+        ],
+        "yaw": -83,
+        "img": "s_opus-norm_089_2_m18_m18.jpg"
+      },
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          -17.2,
+          20,
+          42.8
+        ],
+        "yaw": -83,
+        "img": "s_opus-norm_089_3_m18_m18.jpg"
+      }
+    ],
+    "90": [
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          6.7,
+          0,
+          -3.3
+        ],
+        "yaw": -122,
+        "img": "s_opus-pure_090_1_q03_manzhou.jpg"
+      },
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          -6.7,
+          0,
+          -11.7
+        ],
+        "yaw": -122,
+        "img": "s_opus-pure_090_2_q03_manzhou.jpg"
+      }
+    ],
+    "94": [
+      {
+        "w": "m18",
+        "sc": "haidicheng",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_094_1_m18_haidicheng.jpg"
+      }
+    ],
+    "97": [
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          6.7,
+          0,
+          -1.7
+        ],
+        "yaw": -131,
+        "img": "s_opus-norm_097_1_q03_manzhou.jpg"
+      },
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          -6.7,
+          0,
+          -13.3
+        ],
+        "yaw": -131,
+        "img": "s_opus-norm_097_2_q03_manzhou.jpg"
+      }
+    ],
+    "99": [
+      {
+        "w": "m23",
+        "sc": "bingfeng",
+        "p": [
+          0,
+          0,
+          -7.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_099_1_m23_bingfeng.jpg"
+      }
+    ],
+    "101": [
+      {
+        "w": "m18",
+        "sc": "haidicheng",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_101_1_m18_haidicheng.jpg"
+      }
+    ],
+    "103": [
+      {
+        "w": "m23",
+        "sc": "jianzhong_outer",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_103_1_m23_jianzhong_outer.jpg"
+      }
+    ],
+    "107": [
+      {
+        "w": "m23",
+        "sc": "bingfeng",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_107_1_m23_bingfeng.jpg"
+      }
+    ],
+    "111": [
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          10,
+          0,
+          -10
+        ],
+        "yaw": 135,
+        "img": "s_opus-pure_111_1_m23_m23.jpg"
+      },
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          20,
+          0,
+          -20
+        ],
+        "yaw": 135,
+        "img": "s_opus-pure_111_2_m23_m23.jpg"
+      }
+    ],
+    "117": [
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          0,
+          0,
+          7.5
+        ],
+        "yaw": 0,
+        "img": "s_opus-norm_117_1_m23_m23.jpg"
+      }
+    ],
+    "118": [
+      {
+        "w": "m23",
+        "sc": "xinxianjie",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_118_1_m23_xinxianjie.jpg"
+      }
+    ],
+    "120": [
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          10,
+          0,
+          -1.7
+        ],
+        "yaw": 149,
+        "img": "s_opus-norm_120_1_m23_m23.jpg"
+      },
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          20,
+          0,
+          -18.3
+        ],
+        "yaw": 149,
+        "img": "s_opus-norm_120_2_m23_m23.jpg"
+      }
+    ],
+    "126": [
+      {
+        "w": "m23",
+        "sc": "xinxianjie",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_126_1_m23_xinxianjie.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:1": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          10,
+          0,
+          10
+        ],
+        "yaw": 45,
+        "img": "s_opus-pure_001_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          20,
+          0,
+          20
+        ],
+        "yaw": 45,
+        "img": "s_opus-pure_001_2_q01_yn01a.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:6": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          14,
+          0,
+          27.7
+        ],
+        "yaw": -99,
+        "img": "s_opus-pure_006_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -2.3,
+          0,
+          25.2
+        ],
+        "yaw": -99,
+        "img": "s_opus-pure_006_2_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -18.7,
+          0,
+          22.6
+        ],
+        "yaw": -99,
+        "img": "s_opus-pure_006_3_q01_yn01a.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:8": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -26.2,
+          0,
+          5
+        ],
+        "yaw": 150,
+        "img": "s_opus-pure_008_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -17.5,
+          0,
+          -10
+        ],
+        "yaw": 150,
+        "img": "s_opus-pure_008_2_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -8.7,
+          0,
+          -25
+        ],
+        "yaw": 150,
+        "img": "s_opus-pure_008_3_q01_yn01a.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:14": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          0,
+          0,
+          -51.7
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_014_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          0,
+          0,
+          -63.3
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_014_2_q01_yn01a.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:15": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          10,
+          0,
+          5
+        ],
+        "yaw": 63,
+        "img": "s_opus-pure_015_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          20,
+          0,
+          10
+        ],
+        "yaw": 63,
+        "img": "s_opus-pure_015_2_m01_m01.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:17": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          31.7,
+          0,
+          0
+        ],
+        "yaw": 174,
+        "img": "s_opus-pure_017_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          33.3,
+          0,
+          -15
+        ],
+        "yaw": 174,
+        "img": "s_opus-pure_017_2_m01_m01.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:19": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          25,
+          0,
+          -26.7
+        ],
+        "yaw": -72,
+        "img": "s_opus-pure_019_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          15,
+          0,
+          -23.3
+        ],
+        "yaw": -72,
+        "img": "s_opus-pure_019_2_m01_m01.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:22": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          15,
+          0,
+          -23.3
+        ],
+        "yaw": 108,
+        "img": "s_opus-pure_022_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          25,
+          0,
+          -26.7
+        ],
+        "yaw": 108,
+        "img": "s_opus-pure_022_2_m01_m01.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:24": [
+      {
+        "w": "m01",
+        "sc": "m02",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_024_1_m01_m02.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:28": [
+      {
+        "w": "m01",
+        "sc": "m03",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_028_1_m01_m03.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:30": [
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          10,
+          0,
+          5
+        ],
+        "yaw": 63,
+        "img": "s_opus-pure_030_1_q01_binhua.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:33": [
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          5,
+          0,
+          1.7
+        ],
+        "yaw": -119,
+        "img": "s_opus-pure_033_1_q01_binhua.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          -10,
+          0,
+          -6.7
+        ],
+        "yaw": -119,
+        "img": "s_opus-pure_033_2_q01_binhua.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:35": [
+      {
+        "w": "q03",
+        "sc": "q03",
+        "p": [
+          -12.5,
+          0,
+          2.5
+        ],
+        "yaw": -79,
+        "img": "s_opus-pure_035_1_q03_q03.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:40": [
+      {
+        "w": "q01",
+        "sc": "tangjiabao",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_040_1_q01_tangjiabao.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:44": [
+      {
+        "w": "m01",
+        "sc": "m06",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_044_1_m01_m06.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:48": [
+      {
+        "w": "q03",
+        "sc": "anning",
+        "p": [
+          0,
+          0,
+          -7.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_048_1_q03_anning.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:51": [
+      {
+        "w": "q03",
+        "sc": "guteng",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_051_1_q03_guteng.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:56": [
+      {
+        "w": "q03",
+        "sc": "shushan",
+        "p": [
+          0,
+          0,
+          -7.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_056_1_q03_shushan.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:58": [
+      {
+        "w": "m01",
+        "sc": "m10",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_058_1_m01_m10.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:62": [
+      {
+        "w": "q01",
+        "sc": "leizhou",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_062_1_q01_leizhou.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:66": [
+      {
+        "w": "m18",
+        "sc": "shenmo",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_066_1_m18_shenmo.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:70": [
+      {
+        "w": "m18",
+        "sc": "shenjie",
+        "p": [
+          0,
+          0,
+          -7.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_070_1_m18_shenjie.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:72": [
+      {
+        "w": "m18",
+        "sc": "guijie",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_072_1_m18_guijie.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:76": [
+      {
+        "w": "m18",
+        "sc": "rongyan",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_076_1_m18_rongyan.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:81": [
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          5,
+          0,
+          5
+        ],
+        "yaw": 45,
+        "img": "s_opus-pure_081_1_m18_m18.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:83": [
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          19.8,
+          20,
+          38.5
+        ],
+        "yaw": -83,
+        "img": "s_opus-pure_083_1_m18_m18.jpg"
+      },
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          3.2,
+          20,
+          40.7
+        ],
+        "yaw": -83,
+        "img": "s_opus-pure_083_2_m18_m18.jpg"
+      },
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          -13.4,
+          20,
+          42.8
+        ],
+        "yaw": -83,
+        "img": "s_opus-pure_083_3_m18_m18.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:87": [
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          10,
+          0,
+          2.5
+        ],
+        "yaw": 76,
+        "img": "s_opus-pure_087_1_q03_manzhou.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:90": [
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          6.7,
+          0,
+          -3.3
+        ],
+        "yaw": -122,
+        "img": "s_opus-pure_090_1_q03_manzhou.jpg"
+      },
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          -6.7,
+          0,
+          -11.7
+        ],
+        "yaw": -122,
+        "img": "s_opus-pure_090_2_q03_manzhou.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:94": [
+      {
+        "w": "m18",
+        "sc": "haidicheng",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_094_1_m18_haidicheng.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:99": [
+      {
+        "w": "m23",
+        "sc": "bingfeng",
+        "p": [
+          0,
+          0,
+          -7.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_099_1_m23_bingfeng.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:103": [
+      {
+        "w": "m23",
+        "sc": "jianzhong_outer",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_103_1_m23_jianzhong_outer.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:111": [
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          10,
+          0,
+          -10
+        ],
+        "yaw": 135,
+        "img": "s_opus-pure_111_1_m23_m23.jpg"
+      },
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          20,
+          0,
+          -20
+        ],
+        "yaw": 135,
+        "img": "s_opus-pure_111_2_m23_m23.jpg"
+      }
+    ],
+    "opus-pure-20261106T011000:118": [
+      {
+        "w": "m23",
+        "sc": "xinxianjie",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-pure_118_1_m23_xinxianjie.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:1": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          13.3,
+          6.7,
+          13.3
+        ],
+        "yaw": 45,
+        "img": "s_opus-norm_001_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          26.7,
+          13.3,
+          26.7
+        ],
+        "yaw": 45,
+        "img": "s_opus-norm_001_2_q01_yn01a.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:4": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          21.3,
+          20,
+          35
+        ],
+        "yaw": -105,
+        "img": "s_opus-norm_004_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          2.5,
+          20,
+          30
+        ],
+        "yaw": -105,
+        "img": "s_opus-norm_004_2_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -16.2,
+          20,
+          25
+        ],
+        "yaw": -105,
+        "img": "s_opus-norm_004_3_q01_yn01a.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:6": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -26.2,
+          0,
+          3.8
+        ],
+        "yaw": 152,
+        "img": "s_opus-norm_006_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -17.5,
+          0,
+          -12.5
+        ],
+        "yaw": 152,
+        "img": "s_opus-norm_006_2_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          -8.7,
+          0,
+          -28.7
+        ],
+        "yaw": 152,
+        "img": "s_opus-norm_006_3_q01_yn01a.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:14": [
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          0,
+          0,
+          -55
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_014_1_q01_yn01a.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "yn01a",
+        "p": [
+          0,
+          0,
+          -65
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_014_2_q01_yn01a.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:15": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          10,
+          0,
+          5
+        ],
+        "yaw": 63,
+        "img": "s_opus-norm_015_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          20,
+          0,
+          10
+        ],
+        "yaw": 63,
+        "img": "s_opus-norm_015_2_m01_m01.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:17": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          20,
+          0,
+          3.3
+        ],
+        "yaw": -139,
+        "img": "s_opus-norm_017_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          10,
+          0,
+          -8.3
+        ],
+        "yaw": -139,
+        "img": "s_opus-norm_017_2_m01_m01.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:25": [
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          11.7,
+          0,
+          -25
+        ],
+        "yaw": 113,
+        "img": "s_opus-norm_025_1_m01_m01.jpg"
+      },
+      {
+        "w": "m01",
+        "sc": "m01",
+        "p": [
+          23.3,
+          0,
+          -30
+        ],
+        "yaw": 113,
+        "img": "s_opus-norm_025_2_m01_m01.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:27": [
+      {
+        "w": "m01",
+        "sc": "m02",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_027_1_m01_m02.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:32": [
+      {
+        "w": "m01",
+        "sc": "m03",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_032_1_m01_m03.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:34": [
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          10,
+          0,
+          7.5
+        ],
+        "yaw": 53,
+        "img": "s_opus-norm_034_1_q01_binhua.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:37": [
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          5,
+          0,
+          3.3
+        ],
+        "yaw": -128,
+        "img": "s_opus-norm_037_1_q01_binhua.jpg"
+      },
+      {
+        "w": "q01",
+        "sc": "binhua",
+        "p": [
+          -10,
+          0,
+          -8.3
+        ],
+        "yaw": -128,
+        "img": "s_opus-norm_037_2_q01_binhua.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:40": [
+      {
+        "w": "q03",
+        "sc": "q03",
+        "p": [
+          -12.5,
+          0,
+          5
+        ],
+        "yaw": -68,
+        "img": "s_opus-norm_040_1_q03_q03.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:45": [
+      {
+        "w": "q01",
+        "sc": "tangjiabao",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_045_1_q01_tangjiabao.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:49": [
+      {
+        "w": "m01",
+        "sc": "m06",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_049_1_m01_m06.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:53": [
+      {
+        "w": "q03",
+        "sc": "anning",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_053_1_q03_anning.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:56": [
+      {
+        "w": "q03",
+        "sc": "guteng",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_056_1_q03_guteng.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:60": [
+      {
+        "w": "q03",
+        "sc": "shushan",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_060_1_q03_shushan.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:62": [
+      {
+        "w": "m01",
+        "sc": "m10",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_062_1_m01_m10.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:66": [
+      {
+        "w": "q01",
+        "sc": "leizhou",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_066_1_q01_leizhou.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:71": [
+      {
+        "w": "m18",
+        "sc": "shenmo",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_071_1_m18_shenmo.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:76": [
+      {
+        "w": "m18",
+        "sc": "shenjie",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_076_1_m18_shenjie.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:78": [
+      {
+        "w": "m18",
+        "sc": "guijie",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_078_1_m18_guijie.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:82": [
+      {
+        "w": "m18",
+        "sc": "rongyan",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_082_1_m18_rongyan.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:87": [
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          5,
+          0,
+          5
+        ],
+        "yaw": 45,
+        "img": "s_opus-norm_087_1_m18_m18.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:89": [
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          18.5,
+          20,
+          38.5
+        ],
+        "yaw": -83,
+        "img": "s_opus-norm_089_1_m18_m18.jpg"
+      },
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          0.7,
+          20,
+          40.7
+        ],
+        "yaw": -83,
+        "img": "s_opus-norm_089_2_m18_m18.jpg"
+      },
+      {
+        "w": "m18",
+        "sc": "m18",
+        "p": [
+          -17.2,
+          20,
+          42.8
+        ],
+        "yaw": -83,
+        "img": "s_opus-norm_089_3_m18_m18.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:94": [
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          10,
+          0,
+          5
+        ],
+        "yaw": 63,
+        "img": "s_opus-norm_094_1_q03_manzhou.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:97": [
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          6.7,
+          0,
+          -1.7
+        ],
+        "yaw": -131,
+        "img": "s_opus-norm_097_1_q03_manzhou.jpg"
+      },
+      {
+        "w": "q03",
+        "sc": "manzhou",
+        "p": [
+          -6.7,
+          0,
+          -13.3
+        ],
+        "yaw": -131,
+        "img": "s_opus-norm_097_2_q03_manzhou.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:101": [
+      {
+        "w": "m18",
+        "sc": "haidicheng",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_101_1_m18_haidicheng.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:107": [
+      {
+        "w": "m23",
+        "sc": "bingfeng",
+        "p": [
+          0,
+          0,
+          -10
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_107_1_m23_bingfeng.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:111": [
+      {
+        "w": "m23",
+        "sc": "jianzhong_outer",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_111_1_m23_jianzhong_outer.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:117": [
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          0,
+          0,
+          7.5
+        ],
+        "yaw": 0,
+        "img": "s_opus-norm_117_1_m23_m23.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:120": [
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          10,
+          0,
+          -1.7
+        ],
+        "yaw": 149,
+        "img": "s_opus-norm_120_1_m23_m23.jpg"
+      },
+      {
+        "w": "m23",
+        "sc": "m23",
+        "p": [
+          20,
+          0,
+          -18.3
+        ],
+        "yaw": 149,
+        "img": "s_opus-norm_120_2_m23_m23.jpg"
+      }
+    ],
+    "opus-normal-20261106T010639:126": [
+      {
+        "w": "m23",
+        "sc": "xinxianjie",
+        "p": [
+          0,
+          0,
+          -12.5
+        ],
+        "yaw": 180,
+        "img": "s_opus-norm_126_1_m23_xinxianjie.jpg"
+      }
+    ]
+  }
+}

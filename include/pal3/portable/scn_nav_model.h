@@ -151,6 +151,8 @@ pal4::portable::CollisionMesh ConvertNavFileToCollisionMesh(const NavFile& nav,
 // 3. PAL3 3D Models: .pol (Static), .cvd (Keyframe Mechanism), .mv3 (Morph Role)
 // ============================================================================
 
+std::optional<pal4::portable::Texture> DecodePal3Texture(std::span<const std::uint8_t> bytes);
+
 struct PolSubMesh {
     std::string name;
     std::string texture_name;
@@ -158,6 +160,7 @@ struct PolSubMesh {
     std::array<float, 3> aabb_max{50.0f, 50.0f, 50.0f};
     std::vector<pal4::portable::Vertex> vertices;
     std::vector<std::array<std::uint16_t, 3>> triangles;
+    std::optional<pal4::portable::Texture> decoded_texture{};
 };
 
 struct PolModel {
@@ -167,6 +170,7 @@ struct PolModel {
 
 std::vector<std::uint8_t> SerializePolModel(const PolModel& pol);
 PolModel ParsePolModel(std::span<const std::uint8_t> bytes);
+void NormalizePolModelToStageBounds(PolModel& pol, float target_half_span = 180.0f);
 pal4::portable::Scene ConvertPolToPortableScene(const PolModel& pol);
 
 struct CvdPositionKey {
@@ -227,6 +231,8 @@ struct Mv3Model {
     std::vector<Mv3MorphFrame> frames;
     std::vector<std::array<float, 2>> texcoords;
     std::vector<std::array<std::uint16_t, 3>> triangles;
+    std::vector<std::array<std::uint16_t, 3>> triangle_uv_indices;
+    std::optional<pal4::portable::Texture> decoded_texture{};
 
     float DurationSec() const noexcept { return static_cast<float>(duration_ticks) / 4580.0f; }
     std::optional<float> HoldMarkSec() const noexcept;
