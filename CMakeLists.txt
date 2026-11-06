@@ -43,17 +43,17 @@ target_include_directories(pal3_portable_cpk PUBLIC
 target_link_libraries(pal3_portable_cpk PUBLIC pal4_package_lzo ZLIB::ZLIB)
 target_compile_features(pal3_portable_cpk PUBLIC cxx_std_20)
 
-# 2. PAL3 .scn Scene, .nav Dual-Layer Tile Navigation & A* Pathfinder, and .pol / .cvd / .mv3 3D Models
-add_library(pal3_portable_scn_nav_model STATIC src/scn_nav_model.cpp)
-target_include_directories(pal3_portable_scn_nav_model PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(pal3_portable_scn_nav_model PUBLIC pal4_portable_scene pal4_portable_world)
-target_compile_features(pal3_portable_scn_nav_model PUBLIC cxx_std_20)
-
-# 3. PAL3 .sce Bytecode Script Assembler & Virtual Machine (SceVm, FOP accumulator, serial/parallel run_mode)
+# 2. PAL3 .sce Bytecode Script Assembler & Virtual Machine (SceVm, FOP accumulator, serial/parallel run_mode)
 add_library(pal3_portable_sce_vm STATIC src/sce_vm.cpp)
 target_include_directories(pal3_portable_sce_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(pal3_portable_sce_vm PUBLIC Iconv::Iconv)
 target_compile_features(pal3_portable_sce_vm PUBLIC cxx_std_20)
+
+# 3. PAL3 .scn Scene, .nav Dual-Layer Tile Navigation & A* Pathfinder, and .pol / .cvd / .mv3 3D Models
+add_library(pal3_portable_scn_nav_model STATIC src/scn_nav_model.cpp)
+target_include_directories(pal3_portable_scn_nav_model PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(pal3_portable_scn_nav_model PUBLIC pal4_portable_scene pal4_portable_world pal3_portable_sce_vm)
+target_compile_features(pal3_portable_scn_nav_model PUBLIC cxx_std_20)
 
 # 4. PAL3 Database, Favorability, Demon Sword & Semi-Realtime ATB + Five-Element Taiji Formation Combat
 add_library(pal3_portable_database_combat STATIC src/database_combat.cpp

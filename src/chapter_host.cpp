@@ -1100,7 +1100,7 @@ bool ChapterHost::MountOriginalGameDirectory(const std::filesystem::path& game_d
     }
     original_game_dir = game_dir;
 
-    // Look for `basedata/basedata.cpk` or `basedata.cpk` (case-insensitive)
+    // 1. Mount `basedata/basedata.cpk` (`init.sce` + real protagonist `ROLE/<code>/C01.MV3` morph models)
     std::optional<std::filesystem::path> base_cpk =
         FindFileCaseInsensitive(game_dir / "basedata", "basedata.cpk");
     if (!base_cpk) {
@@ -1123,6 +1123,59 @@ bool ChapterHost::MountOriginalGameDirectory(const std::filesystem::path& game_d
                 }
             }
         }
+    }
+
+    // 2. Upgrade 3D .pol / .cvd models in pre-mounted campaign scenes from real `scene/*.cpk` archives
+    struct RealArchiveModelMap {
+        std::string_view cpk_prefix;
+        std::string_view cpk_file;
+        std::string_view pol_entry;
+        std::string_view cvd_entry;
+    };
+    constexpr RealArchiveModelMap kArchiveModels[] = {
+        {"q01/", "Q01.cpk", "yn01/yn01.pol", "yn01/_01.cvd"},
+        {"m01/", "M01.cpk", "1/1.pol", "1/1.cvd"},
+        {"q03/", "Q03.cpk", "q03/q03.pol", "q03/_01.cvd"},
+        {"m18/", "M18.cpk", "1/1.pol", ""},
+        {"m23/", "M23.cpk", "1/1.pol", ""},
+    };
+    for (const auto& spec : kArchiveModels) {
+        auto cpk_path = FindFileCaseInsensitive(game_dir / "scene", spec.cpk_file);
+        if (!cpk_path) cpk_path = FindFileCaseInsensitive(game_dir / "Scene", spec.cpk_file);
+        if (!cpk_path) continue;
+        std::ifstream ifs(*cpk_path, std::ios::binary);
+        if (!ifs) continue;
+        CpkPackageReader reader(ifs);
+        std::optional<PolModel> real_pol;
+        std::optional<CvdModel> real_cvd;
+        if (!spec.pol_entry.empty()) {
+            if (auto bytes = reader.ReadIfPresent(spec.pol_entry)) {
+                real_pol = ParsePolModel(*bytes);
+            }
+        }
+        if (!spec.cvd_entry.empty()) {
+            if (auto bytes = reader.ReadIfPresent(spec.cvd_entry)) {
+                real_cvd = ParseCvdModel(*bytes);
+            }
+        }
+        for (auto& [key, bundle] : scene_catalog) {
+            if (key.rfind(spec.cpk_prefix, 0) == 0) {
+                if (real_pol) bundle.pol = *real_pol;
+                if (real_cvd) bundle.cvd = *real_cvd;
+            }
+        }
+    }
+
+    // Refresh active scene geometry & GLES3 draw buffers if a scene is already loaded
+    const std::string active_key = current_cpk + "/" + current_scn;
+    auto it = scene_catalog.find(active_key);
+    if (it != scene_catalog.end()) {
+        active_pol = it->second.pol;
+        active_cvd = it->second.cvd;
+        displayed_world_scene = ConvertPolToPortableScene(active_pol);
+        orbit_camera.Fit(displayed_world_scene);
+        world_renderer.Upload(displayed_world_scene);
+        RenderFrameToGles();
     }
     return true;
 }
@@ -1155,6 +1208,7 @@ bool ChapterHost::TryLoadSceneFromOriginalGameDir(std::string_view cpk_name,
     LoadedSceneBundle bundle;
     bundle.scn = ParseScnFile(*scn_bytes);
     bundle.sce = ParseSceFile(*sce_bytes);
+    bundle.init_proc_id = bundle.sce.procs.count(1u) ? 1u : 0u;
     const std::string base =
         bundle.scn.scn_base_name.empty() ? std::string(scn_name) : bundle.scn.scn_base_name;
     bundle.title = std::string(cpk_name) + "/" + std::string(scn_name);
@@ -1169,7 +1223,20 @@ bool ChapterHost::TryLoadSceneFromOriginalGameDir(std::string_view cpk_name,
     } else {
         bundle.pol = BuildStagePolModel(base);
     }
-    if (auto cvd_bytes = reader.ReadIfPresent(base + "/_f01.cvd")) {
+    std::optional<std::vector<std::uint8_t>> cvd_bytes = reader.ReadIfPresent(base + "/_f01.cvd");
+    if (!cvd_bytes) cvd_bytes = reader.ReadIfPresent(base + "/_01.cvd");
+    if (!cvd_bytes) cvd_bytes = reader.ReadIfPresent(base + "/" + base + ".cvd");
+    if (!cvd_bytes) {
+        for (const auto& node : bundle.scn.nodes) {
+            if (node.name.size() > 4 &&
+                (node.name.rfind(".cvd") != std::string::npos ||
+                 node.name.rfind(".CVD") != std::string::npos)) {
+                cvd_bytes = reader.ReadIfPresent(base + "/" + node.name);
+                if (cvd_bytes) break;
+            }
+        }
+    }
+    if (cvd_bytes) {
         bundle.cvd = ParseCvdModel(*cvd_bytes);
     } else {
         bundle.cvd = BuildMechanismCvdModel(base + "_cvd");

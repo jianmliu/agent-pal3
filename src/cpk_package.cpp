@@ -272,12 +272,13 @@ std::vector<std::uint8_t> BuildPal3CpkArchive(std::span<const CpkArchiveBuilderE
     WriteU32At(out, 8u, table_start);       // table_start = 0x80
     WriteU32At(out, 12u, data_start);       // data_start
     WriteU32At(out, 16u, 0x8000u);          // max_file_num = 32768
-    WriteU32At(out, 20u, 0u);               // is_formatted
-    WriteU32At(out, 24u, 0x80u);            // size_of_header
-    WriteU32At(out, 28u, valid_count);      // valid_table_num
-    WriteU32At(out, 32u, 0x8000u);          // max_table_num
-    WriteU32At(out, 36u, 0u);               // fragment_num
-    WriteU32At(out, 40u, static_cast<std::uint32_t>(out.size()));  // package_size
+    WriteU32At(out, 20u, valid_count);      // file_num
+    WriteU32At(out, 24u, 0u);               // is_formatted
+    WriteU32At(out, 28u, 0x80u);            // size_of_header
+    WriteU32At(out, 32u, valid_count);      // valid_table_num
+    WriteU32At(out, 36u, 0x8000u);          // max_table_num
+    WriteU32At(out, 40u, 0u);               // fragment_num
+    WriteU32At(out, 44u, static_cast<std::uint32_t>(out.size()));  // package_size
 
     return out;
 }
@@ -295,6 +296,7 @@ CpkPackageReader::CpkPackageReader(std::istream& stream) : stream_(stream) {
     header_.table_start = ReadU32(stream_);
     header_.data_start = ReadU32(stream_);
     header_.max_file_num = ReadU32(stream_);
+    header_.file_num = ReadU32(stream_);
     header_.is_formatted = ReadU32(stream_);
     header_.size_of_header = ReadU32(stream_);
     header_.valid_table_num = ReadU32(stream_);
@@ -311,8 +313,9 @@ CpkPackageReader::CpkPackageReader(std::istream& stream) : stream_(stream) {
 
     const std::uint32_t table_offset = (header_.table_start >= 128u) ? header_.table_start : 128u;
     const std::uint64_t max_possible_entries = (file_bytes_ - table_offset) / 28u;
+    const std::uint32_t declared_entries = std::max(header_.file_num, header_.valid_table_num);
     const std::uint32_t count = static_cast<std::uint32_t>(
-        std::min<std::uint64_t>(header_.valid_table_num, max_possible_entries));
+        std::min<std::uint64_t>(declared_entries, max_possible_entries));
 
     stream_.seekg(static_cast<std::streamoff>(table_offset), std::ios::beg);
     std::vector<CpkTableEntry> raw_entries(count);
@@ -328,9 +331,10 @@ CpkPackageReader::CpkPackageReader(std::istream& stream) : stream_(stream) {
 
     members_.reserve(count);
     std::unordered_map<std::uint32_t, std::size_t> dir_by_crc;
+    constexpr std::uint32_t kFlagNotCompressed = 0x00010000u;
 
     for (const auto& e : raw_entries) {
-        if ((e.flag & kFlagValid) == 0u || (e.flag & kFlagDeleted) != 0u) {
+        if ((e.flag & (kFlagValid | kFlagDir)) == 0u || (e.flag & kFlagDeleted) != 0u) {
             continue;
         }
         CpkMember m;
@@ -344,7 +348,7 @@ CpkPackageReader::CpkPackageReader(std::istream& stream) : stream_(stream) {
         m.is_directory = (e.flag & kFlagDir) != 0u || (e.flag == 0x00010001u);
         if (m.is_directory) {
             m.codec = CpkCodec::dir;
-        } else if (e.flag == kFlagFileRaw || (e.packed_size == e.origin_size && (e.flag & 0xFFFF0000u) != 0u)) {
+        } else if ((e.flag & kFlagNotCompressed) != 0u) {
             m.codec = CpkCodec::raw;
         } else {
             m.codec = CpkCodec::lzo;
@@ -430,12 +434,18 @@ std::optional<std::size_t> CpkPackageReader::FindByHierarchy(
 
 std::optional<CpkMember> CpkPackageReader::Find(std::string_view path) const {
     const std::string norm = NormalizePal3CpkPath(path);
-    if (auto idx = FindByHierarchy(norm)) {
-        return members_[*idx];
-    }
     auto it = by_path_.find(norm);
     if (it != by_path_.end()) {
         return members_[it->second];
+    }
+    if (auto idx = FindByHierarchy(norm)) {
+        return members_[*idx];
+    }
+    const std::uint32_t full_crc = ComputePal3CpkCrc(norm);
+    for (const auto& m : members_) {
+        if (m.crc == full_crc) {
+            return m;
+        }
     }
     return std::nullopt;
 }
@@ -485,7 +495,7 @@ std::vector<std::uint8_t> CpkPackageReader::Read(std::string_view path, std::siz
         throw std::runtime_error("failed reading packed payload from PAL3 .cpk: " + std::string(path));
     }
 
-    if (found->codec == CpkCodec::raw || found->packed_size == found->origin_size) {
+    if (found->codec == CpkCodec::raw) {
         return packed;
     }
 
@@ -495,6 +505,9 @@ std::vector<std::uint8_t> CpkPackageReader::Read(std::string_view path, std::siz
         packed.data(), static_cast<lzo_uint>(packed.size()),
         decoded.data(), &out_len, nullptr);
     if (rc != LZO_E_OK || out_len != decoded.size()) {
+        if (found->packed_size == found->origin_size) {
+            return packed;
+        }
         throw std::runtime_error("LZO1X decompression failed for PAL3 .cpk entry: " + std::string(path));
     }
     return decoded;

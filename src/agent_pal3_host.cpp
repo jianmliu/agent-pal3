@@ -294,7 +294,9 @@ struct AgentPal3Session {
         out << "\"gles3\":{"
             << "\"frames\":" << host.total_frames << ","
             << "\"draw_calls\":" << host.total_draw_calls << ","
+            << "\"world_vertices\":" << host.displayed_world_scene.vertices.size() << ","
             << "\"mv3_models_loaded\":" << host.role_mv3_models.size() << ","
+            << "\"original_cpk_mounted\":" << (!host.original_game_dir.empty() ? "true" : "false") << ","
             << "\"chapters_mounted\":" << host.scene_catalog.size() << "}"
             << "}";
         return out.str();
@@ -449,6 +451,23 @@ int main(int argc, char** argv) {
             session.mode = argv[++i];
         } else if (arg == "--game-dir" && i + 1 < argc) {
             game_dir = argv[++i];
+        }
+    }
+
+    if (game_dir.empty()) {
+        if (const char* env_dir = std::getenv("PAL3_GAME_DIR"); env_dir && *env_dir) {
+            game_dir = env_dir;
+        } else {
+            for (const char* candidate : {
+                     "/Volumes/T7-Data/pal/pal3-data/PAL3",
+                     "/Users/jianmingliu/Downloads/xjqxzyx/PAL3",
+                 }) {
+                std::error_code ec;
+                if (std::filesystem::exists(std::filesystem::path(candidate) / "basedata", ec)) {
+                    game_dir = candidate;
+                    break;
+                }
+            }
         }
     }
 

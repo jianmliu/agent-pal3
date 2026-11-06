@@ -1,6 +1,7 @@
 #include "pal3/portable/chapter_host.h"
 
 #include <cassert>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 
@@ -66,6 +67,20 @@ int main() {
     host.favor[5] = 20;
     host.favor[3] = 85;
     assert(host.EvaluateEndingName().find("紫萱结局") != std::string::npos);
+
+    // Verify mounting real PAL3 game directory (`/Volumes/T7-Data/pal/pal3-data/PAL3`) if available
+    const std::filesystem::path real_dir{"/Volumes/T7-Data/pal/pal3-data/PAL3"};
+    std::error_code ec;
+    if (std::filesystem::exists(real_dir / "basedata" / "basedata.cpk", ec)) {
+        assert(host.MountOriginalGameDirectory(real_dir));
+        assert(host.role_mv3_models["101"].frames.size() > 2u);
+        assert(host.displayed_world_scene.vertices.size() > 100u);
+        // Verify dynamic loading of a raw original PAL3 scene (`m01/1`) from `scene/M01.cpk`
+        assert(host.TryLoadSceneFromOriginalGameDir("m01", "1"));
+        assert(host.scene_catalog.count("m01/1") == 1u);
+        assert(!host.scene_catalog["m01/1"].nav.layers.empty());
+        assert(!host.scene_catalog["m01/1"].pol.meshes.empty());
+    }
 
     std::cout << "[PASS] pal3_chapter_host_integration_tests\n";
     return 0;

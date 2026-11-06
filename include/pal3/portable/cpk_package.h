@@ -25,6 +25,7 @@ struct CpkHeader {
     std::uint32_t table_start{0x80u};
     std::uint32_t data_start{};
     std::uint32_t max_file_num{0x8000u};
+    std::uint32_t file_num{};
     std::uint32_t is_formatted{0u};
     std::uint32_t size_of_header{0x80u};
     std::uint32_t valid_table_num{};

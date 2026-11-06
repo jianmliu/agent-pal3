@@ -1,4 +1,5 @@
 #include "pal3/portable/scn_nav_model.h"
+#include "pal3/portable/sce_vm.h"
 
 #include <algorithm>
 #include <cmath>
@@ -103,7 +104,7 @@ struct ByteReader {
         std::size_t len = 0;
         while (len < fixed_len && begin[len] != '\0') ++len;
         pos += fixed_len;
-        return std::string(begin, len);
+        return ConvertGbkOrUtf8ToUtf8(std::string_view(begin, len));
     }
 };
 
@@ -115,34 +116,38 @@ struct ByteReader {
 
 std::vector<std::uint8_t> SerializeScnFile(const ScnFile& scn) {
     std::vector<std::uint8_t> out;
-    // Magic "SCN\0" + version(u16=1) + pad(u16=0)
+    // Exact 150-byte header matching OpenPAL3 `scn_load_from_file`:
+    // 0..4 "SCN\0", 4..6 version(1), 6..8 role_num, 8..12 role_offset(150),
+    // 12..14 node_num, 14..18 node_offset, 18..50 cpk_name, 50..82 scn_name,
+    // 82..114 scn_base_name, 114..118 global_scene_index, 118..122 is_night,
+    // 122..126 skybox_id, 126..150 reserved.
     out.insert(out.end(), {'S', 'C', 'N', '\0'});
     WriteU16(out, 1u);
-    WriteU16(out, 0u);
     WriteU16(out, static_cast<std::uint16_t>(scn.roles.size()));
-    WriteU16(out, 0u);
     const std::size_t role_offset_pos = out.size();
     WriteU32(out, 0u);
     WriteU16(out, static_cast<std::uint16_t>(scn.nodes.size()));
-    WriteU16(out, 0u);
     const std::size_t node_offset_pos = out.size();
     WriteU32(out, 0u);
 
     WriteFixedString(out, scn.cpk_name, 32);
     WriteFixedString(out, scn.scn_name, 32);
     WriteFixedString(out, scn.scn_base_name, 32);
+    WriteU32(out, 0u);  // global_scene_index
     WriteU32(out, scn.is_night);
     WriteU32(out, scn.skybox_id);
+    out.resize(150, 0u);
 
-    // Roles table (each 820 bytes matching OpenPAL3 `read_scn_roles`)
+    // Roles table (each 456 bytes matching OpenPAL3 `read_scn_role`)
     const std::uint32_t role_offset = static_cast<std::uint32_t>(out.size());
     WriteU32At(out, role_offset_pos, role_offset);
     for (const auto& r : scn.roles) {
         const std::size_t r_start = out.size();
-        out.resize(r_start + 820, 0u);
+        out.resize(r_start + 456, 0u);
         out[r_start + 0] = r.index;
+        out[r_start + 1] = 1u;
         const std::size_t nlen = std::min<std::size_t>(r.name.size(), 63);
-        std::memcpy(out.data() + r_start + 4, r.name.data(), nlen);
+        std::memcpy(out.data() + r_start + 2, r.name.data(), nlen);
 
         auto write_f32_at = [&](std::size_t off, float val) {
             std::uint32_t bits = 0;
@@ -152,11 +157,11 @@ std::vector<std::uint8_t> SerializeScnFile(const ScnFile& scn) {
         write_f32_at(0x44, r.facing_deg);
         WriteU32At(out, r_start + 0x48, r.nav_layer);
         write_f32_at(0x4C, r.position_x);
-        write_f32_at(0x54, r.position_z);
+        write_f32_at(0x50, r.position_z);
         WriteU32At(out, r_start + 0x5C, r.sce_proc_id);
 
         const std::size_t alen = std::min<std::size_t>(r.action_name.size(), 15);
-        std::memcpy(out.data() + r_start + 0x70, r.action_name.data(), alen);
+        std::memcpy(out.data() + r_start + 0x64, r.action_name.data(), alen);
         WriteU32At(out, r_start + 0x80, r.path_mode);
 
         const std::uint32_t wp_cnt =
@@ -167,18 +172,18 @@ std::vector<std::uint8_t> SerializeScnFile(const ScnFile& scn) {
             write_f32_at(0x88 + w * 12 + 4, r.patrol_path[w][1]);
             write_f32_at(0x88 + w * 12 + 8, r.patrol_path[w][2]);
         }
-        write_f32_at(0x150, r.move_speed);
+        WriteU32At(out, r_start + 0x150, static_cast<std::uint32_t>(std::max(0.0f, r.move_speed)));
     }
 
-    // Nodes table (each 620 bytes matching OpenPAL3 `read_scn_nodes`)
+    // Nodes table (each 620 bytes matching OpenPAL3 `read_scn_node`)
     const std::uint32_t node_offset = static_cast<std::uint32_t>(out.size());
     WriteU32At(out, node_offset_pos, node_offset);
     for (const auto& n : scn.nodes) {
         const std::size_t n_start = out.size();
         out.resize(n_start + 620, 0u);
         out[n_start + 0] = n.index;
-        out[n_start + 1] = n.active;
-        out[n_start + 2] = n.times;
+        out[n_start + 1] = 0u;
+        out[n_start + 2] = n.active;
         out[n_start + 3] = n.switch_state;
         const std::size_t nlen = std::min<std::size_t>(n.name.size(), 31);
         std::memcpy(out.data() + n_start + 4, n.name.data(), nlen);
@@ -200,15 +205,16 @@ std::vector<std::uint8_t> SerializeScnFile(const ScnFile& scn) {
         WriteU32At(out, n_start + 0x40, static_cast<std::uint32_t>(n.nav_trigger_coord_max[0]));
         WriteU32At(out, n_start + 0x44, static_cast<std::uint32_t>(n.nav_trigger_coord_max[1]));
 
-        out[n_start + 0x4E] = static_cast<std::uint8_t>(n.node_type & 0xFFu);
-        out[n_start + 0x4F] = static_cast<std::uint8_t>((n.node_type >> 8u) & 0xFFu);
-        WriteU32At(out, n_start + 0xAC, n.nav_layer);
-        WriteU32At(out, n_start + 0xB0, static_cast<std::uint32_t>(n.ladder_nav_coord1[0]));
-        WriteU32At(out, n_start + 0xB4, static_cast<std::uint32_t>(n.ladder_nav_coord1[1]));
-        WriteU32At(out, n_start + 0xB8, static_cast<std::uint32_t>(n.ladder_nav_coord2[0]));
-        WriteU32At(out, n_start + 0xBC, static_cast<std::uint32_t>(n.ladder_nav_coord2[1]));
-        WriteU32At(out, n_start + 0xC0, static_cast<std::uint32_t>(n.ladder_switch_layer));
-        WriteU32At(out, n_start + 0xFC, n.sce_proc_id);
+        out[n_start + 0x48] = static_cast<std::uint8_t>(n.node_type & 0xFFu);
+        out[n_start + 0x49] = static_cast<std::uint8_t>((n.node_type >> 8u) & 0xFFu);
+        out[n_start + 0x4A] = static_cast<std::uint8_t>(n.nav_layer & 0xFFu);
+        out[n_start + 0x4B] = static_cast<std::uint8_t>((n.nav_layer >> 8u) & 0xFFu);
+        WriteU32At(out, n_start + 0x4C, static_cast<std::uint32_t>(n.ladder_nav_coord1[0]));
+        WriteU32At(out, n_start + 0x50, static_cast<std::uint32_t>(n.ladder_nav_coord1[1]));
+        WriteU32At(out, n_start + 0x54, static_cast<std::uint32_t>(n.ladder_nav_coord2[0]));
+        WriteU32At(out, n_start + 0x58, static_cast<std::uint32_t>(n.ladder_nav_coord2[1]));
+        WriteU32At(out, n_start + 0x5C, static_cast<std::uint32_t>(n.ladder_switch_layer));
+        WriteU32At(out, n_start + 0x80, n.sce_proc_id);
 
         write_f32_at(0x16C, n.aabb_trigger_coord1[0]);
         write_f32_at(0x170, n.aabb_trigger_coord1[1]);
@@ -228,41 +234,40 @@ ScnFile ParseScnFile(std::span<const std::uint8_t> bytes) {
         throw std::runtime_error("invalid PAL3 .scn magic (expected SCN\\0)");
     }
     const std::uint16_t version = r.ReadU16();
-    (void)r.ReadU16();
     if (version != 1u) {
         throw std::runtime_error("unsupported PAL3 .scn version");
     }
     const std::uint16_t role_num = r.ReadU16();
-    (void)r.ReadU16();
     const std::uint32_t role_offset = r.ReadU32();
     const std::uint16_t node_num = r.ReadU16();
-    (void)r.ReadU16();
     const std::uint32_t node_offset = r.ReadU32();
 
     ScnFile scn;
     scn.cpk_name = r.ReadFixedString(32);
     scn.scn_name = r.ReadFixedString(32);
     scn.scn_base_name = r.ReadFixedString(32);
+    (void)r.ReadU32();  // global_scene_index
     scn.is_night = r.ReadU32();
     scn.skybox_id = r.ReadU32();
 
     scn.roles.reserve(role_num);
     for (std::uint16_t i = 0; i < role_num; ++i) {
-        const std::size_t base = static_cast<std::size_t>(role_offset) + static_cast<std::size_t>(i) * 820u;
+        const std::size_t base = static_cast<std::size_t>(role_offset) + static_cast<std::size_t>(i) * 456u;
+        if (base + 456u > bytes.size()) break;
         ScnRole role;
         r.Seek(base + 0);
         role.index = r.ReadU8();
-        r.Seek(base + 4);
+        (void)r.ReadU8();
         role.name = r.ReadFixedString(64);
-        r.Seek(base + 0x44);
+        (void)r.ReadU16();
         role.facing_deg = r.ReadF32();
         role.nav_layer = r.ReadU32();
         role.position_x = r.ReadF32();
-        r.Seek(base + 0x54);
         role.position_z = r.ReadF32();
-        r.Seek(base + 0x5C);
+        (void)r.ReadU32();  // flag_0x54
+        (void)r.ReadU32();  // dw58
         role.sce_proc_id = r.ReadU32();
-        r.Seek(base + 0x70);
+        (void)r.ReadU32();  // dw60
         role.action_name = r.ReadFixedString(16);
         r.Seek(base + 0x80);
         role.path_mode = r.ReadU32();
@@ -271,22 +276,33 @@ ScnFile ParseScnFile(std::span<const std::uint8_t> bytes) {
             role.patrol_path.push_back({r.ReadF32(), r.ReadF32(), r.ReadF32()});
         }
         r.Seek(base + 0x150);
-        role.move_speed = r.ReadF32();
-        if (role.move_speed <= 0.0f) role.move_speed = 215.0f;
+        const std::uint32_t raw_speed = r.ReadU32();
+        role.move_speed = (raw_speed > 0u && raw_speed <= 500u)
+                              ? static_cast<float>(raw_speed)
+                              : 215.0f;
         scn.roles.push_back(std::move(role));
     }
 
+    // PAL3 node records are 620 bytes (PAL3A is 604 bytes)
+    const std::size_t node_stride =
+        (node_num > 0 && node_offset + static_cast<std::size_t>(node_num) * 620u > bytes.size() &&
+         node_offset + static_cast<std::size_t>(node_num) * 604u <= bytes.size())
+            ? 604u
+            : 620u;
+
     scn.nodes.reserve(node_num);
     for (std::uint16_t i = 0; i < node_num; ++i) {
-        const std::size_t base = static_cast<std::size_t>(node_offset) + static_cast<std::size_t>(i) * 620u;
+        const std::size_t base = static_cast<std::size_t>(node_offset) + static_cast<std::size_t>(i) * node_stride;
+        if (base + 0x184u > bytes.size()) break;
         ScnNode node;
         r.Seek(base + 0);
-        node.index = r.ReadU8();
-        node.active = r.ReadU8();
-        node.times = r.ReadU8();
-        node.switch_state = r.ReadU8();
+        node.index = static_cast<std::uint8_t>(r.ReadU16() & 0xFFu);
+        const std::uint16_t w2 = r.ReadU16();
+        node.active = (w2 == 0u) ? 1u : static_cast<std::uint8_t>(w2 & 0xFFu);
+        node.times = 255u;
+        node.switch_state = static_cast<std::uint8_t>((w2 >> 8u) & 0xFFu);
         node.name = r.ReadFixedString(32);
-        r.Seek(base + 0x26);
+        (void)r.ReadU16();  // w24
         const std::uint16_t w26 = r.ReadU16();
         node.position[0] = r.ReadF32();
         node.position[1] = r.ReadF32();
@@ -296,17 +312,15 @@ ScnFile ParseScnFile(std::span<const std::uint8_t> bytes) {
         node.nav_trigger_coord_min[1] = r.ReadI32();
         node.nav_trigger_coord_max[0] = r.ReadI32();
         node.nav_trigger_coord_max[1] = r.ReadI32();
-        r.Seek(base + 0x4E);
-        const std::uint16_t w4e = r.ReadU16();
-        node.node_type = (w4e != 0u) ? w4e : w26;
-        r.Seek(base + 0xAC);
-        node.nav_layer = r.ReadU32();
+        const std::uint16_t w48 = r.ReadU16();
+        node.node_type = (w48 != 0u) ? w48 : w26;
+        node.nav_layer = r.ReadU16();
         node.ladder_nav_coord1[0] = r.ReadI32();
         node.ladder_nav_coord1[1] = r.ReadI32();
         node.ladder_nav_coord2[0] = r.ReadI32();
         node.ladder_nav_coord2[1] = r.ReadI32();
         node.ladder_switch_layer = r.ReadI32();
-        r.Seek(base + 0xFC);
+        r.Seek(base + 0x80);
         node.sce_proc_id = r.ReadU32();
         r.Seek(base + 0x16C);
         node.aabb_trigger_coord1[0] = r.ReadF32();
@@ -351,17 +365,14 @@ std::vector<std::uint8_t> SerializeNavFile(const NavFile& nav) {
     out.insert(out.end(), {'N', 'A', 'V', '\0'});
     WriteU8(out, nav.version);
     WriteU8(out, static_cast<std::uint8_t>(nav.layers.size()));
-    WriteU16(out, 0u);
     const std::size_t off1_pos = out.size();
-    WriteU32(out, 0u);
+    WriteU32(out, 0u);  // unknown1_offset (start of NavMap array)
     const std::size_t off2_pos = out.size();
-    WriteU32(out, 0u);
+    WriteU32(out, 0u);  // unknown2_offset (start of NavUnknown2 array)
 
+    WriteU32At(out, off1_pos, static_cast<std::uint32_t>(out.size()));
     for (std::size_t li = 0; li < nav.layers.size(); ++li) {
         const auto& layer = nav.layers[li];
-        const std::uint32_t layer_off = static_cast<std::uint32_t>(out.size());
-        WriteU32At(out, (li == 0) ? off1_pos : off2_pos, layer_off);
-
         if (nav.version == 2u) {
             for (const auto& portal : layer.portals) {
                 WriteI32(out, portal.min_coord[0]);
@@ -386,6 +397,13 @@ std::vector<std::uint8_t> SerializeNavFile(const NavFile& nav) {
             WriteU32(out, pt.distance_to_border);
         }
     }
+
+    // Trailing NavUnknown2 section (`count` entries of empty vertex/index lists)
+    WriteU32At(out, off2_pos, static_cast<std::uint32_t>(out.size()));
+    for (std::size_t li = 0; li < nav.layers.size(); ++li) {
+        WriteU16(out, 0u);
+        WriteU16(out, 0u);
+    }
     return out;
 }
 
@@ -398,16 +416,14 @@ NavFile ParseNavFile(std::span<const std::uint8_t> bytes) {
     NavFile nav;
     nav.version = r.ReadU8();
     const std::uint8_t count = r.ReadU8();
-    (void)r.ReadU16();
-    const std::uint32_t offset1 = r.ReadU32();
-    const std::uint32_t offset2 = r.ReadU32();
+    const std::uint32_t unknown1_offset = r.ReadU32();
+    (void)r.ReadU32();  // unknown2_offset
 
     if ((nav.version != 1u && nav.version != 2u) || (count != 1u && count != 2u)) {
         throw std::runtime_error("unsupported PAL3 .nav version or layer count");
     }
 
-    auto read_layer = [&](std::uint32_t offset) {
-        r.Seek(offset);
+    auto read_next_layer = [&]() {
         NavLayer layer;
         if (nav.version == 2u) {
             for (auto& portal : layer.portals) {
@@ -430,9 +446,9 @@ NavFile ParseNavFile(std::span<const std::uint8_t> bytes) {
         return layer;
     };
 
-    nav.layers.push_back(read_layer(offset1));
-    if (count == 2u) {
-        nav.layers.push_back(read_layer(offset2));
+    r.Seek(unknown1_offset);
+    for (std::uint8_t i = 0; i < count; ++i) {
+        nav.layers.push_back(read_next_layer());
     }
     return nav;
 }
@@ -880,6 +896,82 @@ std::vector<std::uint8_t> SerializePolModel(const PolModel& pol) {
 }
 
 PolModel ParsePolModel(std::span<const std::uint8_t> bytes) {
+    // 1. Try real PAL3 .pol format (`OpenPAL3/yaobow/fileformats/src/pol.rs`)
+    try {
+        ByteReader r{bytes, 0};
+        if (r.ReadFixedString(4) != "POLY") {
+            throw std::runtime_error("invalid PAL3 .pol magic (expected POLY)");
+        }
+        PolModel pol;
+        pol.version = r.ReadU32();  // some_flag
+        const std::uint32_t mesh_cnt = r.ReadU32();
+        if (mesh_cnt == 0u || mesh_cnt > 4096u) {
+            throw std::runtime_error("unreasonable real .pol mesh_cnt");
+        }
+        // Skip GeomNodeDesc (mesh_cnt * 52 bytes)
+        r.Seek(r.pos + static_cast<std::size_t>(mesh_cnt) * 52u);
+        if (pol.version > 100u) {
+            const std::uint32_t unknown_cnt = r.ReadU32();
+            for (std::uint32_t u = 0; u < unknown_cnt; ++u) {
+                r.Seek(r.pos + 32u + 64u + 4u);
+                const std::uint32_t str_len = r.ReadU32();
+                r.Seek(r.pos + str_len);
+            }
+        }
+        pol.meshes.reserve(mesh_cnt);
+        for (std::uint32_t m_idx = 0; m_idx < mesh_cnt; ++m_idx) {
+            PolSubMesh m;
+            m.name = "mesh_" + std::to_string(m_idx);
+            m.aabb_min = {r.ReadF32(), r.ReadF32(), r.ReadF32()};
+            m.aabb_max = {r.ReadF32(), r.ReadF32(), r.ReadF32()};
+            const std::uint32_t vtype = r.ReadU32();
+            const std::uint32_t vcnt = r.ReadU32();
+            if ((vtype & 0x1u) == 0u || (vtype & 0x10u) == 0u || vcnt > 262144u) {
+                throw std::runtime_error("unsupported real .pol vertex_type/vcnt");
+            }
+            m.vertices.resize(vcnt);
+            for (std::uint32_t v = 0; v < vcnt; ++v) {
+                auto& vtx = m.vertices[v];
+                for (int c = 0; c < 3; ++c) vtx.position[c] = r.ReadF32();
+                if (vtype & 0x2u) r.Seek(r.pos + 12u);   // normal
+                if (vtype & 0x4u) r.Seek(r.pos + 4u);    // unknown4
+                if (vtype & 0x8u) r.Seek(r.pos + 4u);    // unknown8
+                vtx.uv0[0] = r.ReadF32();
+                vtx.uv0[1] = r.ReadF32();
+                if (vtype & 0x20u) {
+                    vtx.uv1[0] = r.ReadF32();
+                    vtx.uv1[1] = r.ReadF32();
+                } else {
+                    vtx.uv1[0] = vtx.uv0[0];
+                    vtx.uv1[1] = vtx.uv0[1];
+                }
+                if (vtype & 0x40u) r.Seek(r.pos + 8u);
+                if (vtype & 0x80u) r.Seek(r.pos + 8u);
+                if (vtype & 0x100u) r.Seek(r.pos + 16u);
+                for (int c = 0; c < 4; ++c) vtx.color[c] = 1.0f;
+            }
+            const std::uint32_t mat_cnt = r.ReadU32();
+            for (std::uint32_t mat = 0; mat < mat_cnt; ++mat) {
+                (void)r.ReadU32();  // use_alpha
+                r.Seek(r.pos + 68u);  // unknown_68 (16*f32) + unknown_float (f32)
+                const std::uint32_t tex_cnt = r.ReadU32();
+                for (std::uint32_t tc = 0; tc < tex_cnt; ++tc) {
+                    const std::string tname = r.ReadFixedString(64);
+                    if (m.texture_name.empty() && !tname.empty()) m.texture_name = tname;
+                }
+                r.Seek(r.pos + 12u);  // unknown2, unknown3, unknown4
+                const std::uint32_t tri_cnt = r.ReadU32();
+                for (std::uint32_t t = 0; t < tri_cnt; ++t) {
+                    m.triangles.push_back({r.ReadU16(), r.ReadU16(), r.ReadU16()});
+                }
+            }
+            pol.meshes.push_back(std::move(m));
+        }
+        return pol;
+    } catch (...) {
+        // Fall through to compact synthetic .pol format
+    }
+
     ByteReader r{bytes, 0};
     if (r.ReadFixedString(4) != "POLY") {
         throw std::runtime_error("invalid PAL3 .pol magic (expected POLY)");
@@ -966,11 +1058,131 @@ std::vector<std::uint8_t> SerializeCvdModel(const CvdModel& cvd) {
 }
 
 CvdModel ParseCvdModel(std::span<const std::uint8_t> bytes) {
-    ByteReader r{bytes, 0};
-    const std::string magic = r.ReadFixedString(4);
+    ByteReader probe{bytes, 0};
+    const std::string magic = probe.ReadFixedString(4);
     if (magic != "cvdf" && magic != "cvds") {
         throw std::runtime_error("invalid PAL3 .cvd magic (expected cvdf or cvds)");
     }
+    const std::uint32_t raw_first_u32 = probe.ReadU32();
+    const bool has_material_extra = (magic == "cvds");
+
+    // In real PAL3 .cvd (`OpenPAL3/yaobow/fileformats/src/pal3/cvd.rs`), offset 4 is `u32 model_count` (1..512),
+    // whereas in synthetic .cvd offset 4 is IEEE-754 `f32 animation_duration_sec` (>= 0x3C000000).
+    if (raw_first_u32 > 0u && raw_first_u32 <= 512u) {
+        try {
+            ByteReader r{bytes, 8};
+            CvdModel cvd;
+            cvd.animation_duration_sec = 1.0f;
+            float max_ts = 1.0f;
+
+            auto read_node_recursive = [&](auto& self) -> void {
+                const std::uint8_t has_model = r.ReadU8();
+                if (has_model > 0u) {
+                    CvdNode node;
+                    node.name = "cvd_node_" + std::to_string(cvd.nodes.size());
+
+                    // 1. Position keyframes
+                    const std::int32_t pos_cnt = r.ReadI32();
+                    if (pos_cnt > 0) {
+                        const std::uint8_t ver = r.ReadU8();
+                        (void)ver;
+                        for (std::int32_t k = 0; k < pos_cnt; ++k) {
+                            CvdPositionKey pk;
+                            pk.timestamp_sec = r.ReadF32();
+                            max_ts = std::max(max_ts, pk.timestamp_sec);
+                            float u[10]{};
+                            for (int j = 0; j < 10; ++j) u[j] = r.ReadF32();
+                            pk.position = {u[0], u[1], u[2]};
+                            node.position_keys.push_back(pk);
+                        }
+                    }
+
+                    // 2. Rotation keyframes
+                    const std::int32_t rot_cnt = r.ReadI32();
+                    if (rot_cnt > 0) {
+                        const std::uint8_t ver = r.ReadU8();
+                        (void)ver;
+                        for (std::int32_t k = 0; k < rot_cnt; ++k) {
+                            CvdRotationKey rk;
+                            rk.timestamp_sec = r.ReadF32();
+                            max_ts = std::max(max_ts, rk.timestamp_sec);
+                            float u[10]{};
+                            for (int j = 0; j < 10; ++j) u[j] = r.ReadF32();
+                            rk.angle_deg = u[3];
+                            rk.axis = {u[0], u[1], u[2]};
+                            node.rotation_keys.push_back(rk);
+                        }
+                    }
+
+                    // 3. Scale keyframes
+                    const std::int32_t scale_cnt = r.ReadI32();
+                    if (scale_cnt > 0) {
+                        (void)r.ReadU8();
+                        r.Seek(r.pos + static_cast<std::size_t>(scale_cnt) * 60u);
+                    }
+
+                    node.scale = r.ReadF32();
+                    if (node.scale <= 0.0f) node.scale = 1.0f;
+
+                    // 4. Mesh
+                    const std::uint32_t frame_cnt = r.ReadU32();
+                    const std::uint32_t vtx_cnt = r.ReadU32();
+                    for (std::uint32_t f = 0; f < frame_cnt; ++f) {
+                        for (std::uint32_t v = 0; v < vtx_cnt; ++v) {
+                            const float u = r.ReadF32();
+                            const float tv = r.ReadF32();
+                            r.Seek(r.pos + 12u);  // normal
+                            const float px = r.ReadF32();
+                            const float py = r.ReadF32();
+                            const float pz = r.ReadF32();
+                            if (f == 0u) {
+                                pal4::portable::Vertex vtx{};
+                                vtx.position[0] = px;
+                                vtx.position[1] = py;
+                                vtx.position[2] = pz;
+                                vtx.uv0[0] = u;
+                                vtx.uv0[1] = tv;
+                                vtx.uv1[0] = u;
+                                vtx.uv1[1] = tv;
+                                for (int c = 0; c < 4; ++c) vtx.color[c] = 1.0f;
+                                node.vertices.push_back(vtx);
+                            }
+                        }
+                    }
+                    r.Seek(r.pos + static_cast<std::size_t>(frame_cnt) * 4u);  // frame_extra
+
+                    const std::uint32_t mat_cnt = r.ReadU32();
+                    for (std::uint32_t m = 0; m < mat_cnt; ++m) {
+                        r.Seek(r.pos + 1u + 16u + 4u + 64u);  // u8 + 4*u32 + f32 + 64B tex_name
+                        const std::uint32_t tri_cnt = r.ReadU32();
+                        for (std::uint32_t t = 0; t < tri_cnt; ++t) {
+                            node.triangles.push_back({r.ReadU16(), r.ReadU16(), r.ReadU16()});
+                        }
+                        if (has_material_extra) {
+                            const std::uint32_t extra_cnt = r.ReadU32();
+                            r.Seek(r.pos + static_cast<std::size_t>(extra_cnt) * 24u);
+                        }
+                    }
+                    r.Seek(r.pos + 64u);  // 4x4 matrix
+                    cvd.nodes.push_back(std::move(node));
+                }
+                const std::uint32_t child_cnt = r.ReadU32();
+                for (std::uint32_t c = 0; c < child_cnt; ++c) {
+                    self(self);
+                }
+            };
+
+            for (std::uint32_t i = 0; i < raw_first_u32; ++i) {
+                read_node_recursive(read_node_recursive);
+            }
+            cvd.animation_duration_sec = max_ts;
+            return cvd;
+        } catch (...) {
+            // Fall through to synthetic .cvd parser
+        }
+    }
+
+    ByteReader r{bytes, 4};
     CvdModel cvd;
     cvd.animation_duration_sec = r.ReadF32();
     const std::uint32_t ncnt = r.ReadU32();
@@ -1123,6 +1335,90 @@ std::vector<std::uint8_t> SerializeMv3Model(const Mv3Model& mv3) {
 }
 
 Mv3Model ParseMv3Model(std::span<const std::uint8_t> bytes) {
+    // 1. Try real PAL3 .mv3 format (`OpenPAL3/yaobow/fileformats/src/mv3.rs`)
+    if (bytes.size() >= 28u) {
+        try {
+            ByteReader r{bytes, 0};
+            if (r.ReadFixedString(4) != "MV3") {
+                throw std::runtime_error("invalid PAL3 .mv3 magic (expected MV3\\0)");
+            }
+            const std::uint32_t version = r.ReadU32();
+            const std::uint32_t duration = r.ReadU32();
+            const std::uint32_t tex_cnt = r.ReadU32();
+            const std::uint32_t unk_cnt = r.ReadU32();
+            const std::uint32_t model_cnt = r.ReadU32();
+            const std::uint32_t action_cnt = r.ReadU32();
+
+            // In synthetic .mv3, bytes 12..24 are inside zero-padded `action_name`, so `model_cnt == 0`
+            if (model_cnt > 0u && model_cnt <= 64u && tex_cnt <= 64u && action_cnt <= 128u) {
+                Mv3Model mv3;
+                mv3.version = version;
+                mv3.duration_ticks = duration;
+                mv3.events.resize(action_cnt);
+                for (std::uint32_t i = 0; i < action_cnt; ++i) {
+                    mv3.events[i].timestamp_ticks = r.ReadU32();
+                    mv3.events[i].name = r.ReadFixedString(16);
+                }
+                for (std::uint32_t u = 0; u < unk_cnt; ++u) {
+                    r.Seek(r.pos + 64u + 4u);
+                    const std::uint32_t u2_cnt = r.ReadU32();
+                    r.Seek(r.pos + static_cast<std::size_t>(u2_cnt) * 68u);
+                }
+                for (std::uint32_t t = 0; t < tex_cnt; ++t) {
+                    r.Seek(r.pos + 68u);  // 17 * f32
+                    for (int n = 0; n < 4; ++n) {
+                        const std::uint32_t slen = r.ReadU32();
+                        const std::string tname = r.ReadFixedString(slen);
+                        if (mv3.texture_name == "role.tga" && !tname.empty()) {
+                            mv3.texture_name = tname;
+                        }
+                    }
+                }
+                // Read the first model node
+                r.Seek(r.pos + 64u);  // 64B unknown
+                const std::uint32_t vtx_per_frame = r.ReadU32();
+                r.Seek(r.pos + 24u);  // aabb_min + aabb_max
+                const std::uint32_t frame_cnt = r.ReadU32();
+                mv3.frames.resize(frame_cnt);
+                for (std::uint32_t f = 0; f < frame_cnt; ++f) {
+                    mv3.frames[f].timestamp_ticks = r.ReadU32();
+                    mv3.frames[f].vertex_positions_q6.resize(vtx_per_frame);
+                    for (std::uint32_t v = 0; v < vtx_per_frame; ++v) {
+                        const std::int16_t vx = static_cast<std::int16_t>(-r.ReadI16());
+                        const std::int16_t vy = r.ReadI16();
+                        const std::int16_t vz = static_cast<std::int16_t>(-r.ReadI16());
+                        (void)r.ReadU16();  // normal_phi + normal_theta
+                        mv3.frames[f].vertex_positions_q6[v] = {vx, vy, vz};
+                    }
+                }
+                const std::uint32_t tc_cnt = r.ReadU32();
+                mv3.texcoords.resize(tc_cnt);
+                for (std::uint32_t tc = 0; tc < tc_cnt; ++tc) {
+                    mv3.texcoords[tc] = {r.ReadF32(), r.ReadF32()};
+                }
+                const std::uint32_t mesh_cnt = r.ReadU32();
+                for (std::uint32_t m = 0; m < mesh_cnt; ++m) {
+                    (void)r.ReadU32();  // unknown
+                    const std::uint32_t tri_cnt = r.ReadU32();
+                    for (std::uint32_t t = 0; t < tri_cnt; ++t) {
+                        const std::uint16_t i0 = r.ReadU16();
+                        const std::uint16_t i1 = r.ReadU16();
+                        const std::uint16_t i2 = r.ReadU16();
+                        (void)r.ReadU16();
+                        (void)r.ReadU16();
+                        (void)r.ReadU16();
+                        mv3.triangles.push_back({i0, i1, i2});
+                    }
+                    const std::uint32_t udata_cnt = r.ReadU32();
+                    r.Seek(r.pos + static_cast<std::size_t>(udata_cnt) * 4u);
+                }
+                return mv3;
+            }
+        } catch (...) {
+            // Fall through to compact synthetic .mv3 parser
+        }
+    }
+
     ByteReader r{bytes, 0};
     if (r.ReadFixedString(4) != "MV3") {
         throw std::runtime_error("invalid PAL3 .mv3 magic (expected MV3\\0)");
