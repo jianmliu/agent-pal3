@@ -5,6 +5,9 @@
   "model": "agy-cli:claude-opus-5-5-high",
   "mode": "pure",
   "fullCampaign": true,
+  "multiScnDungeon": false,
+  "complete116Campaign": false,
+  "expectedSceneTarget": 24,
   "toolCalls": 123,
   "agentTurns": 84,
   "callsPerTurn": 1.46,
@@ -25,6 +28,6 @@
   "gameCleared": true,
   "victories": 18,
   "episodeDigest": "098cda9a246687113b18f74392c4d1bb5d01169f5afb63799d8302d0c639438b",
-  "verifiedAt": "2026-11-06T02:35:10.149Z",
+  "verifiedAt": "2026-11-08T06:21:29.796Z",
   "diffs": []
 }

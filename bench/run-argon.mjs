@@ -36,6 +36,12 @@ const MODE = parseCliMode();
 class HostBridge {
   constructor(binPath, workDir, mode) {
     const args = ['--work-dir', workDir, '--mode', mode, '--full-campaign'];
+    if (!process.argv.includes('--no-multi-scn-dungeon')) {
+      args.push('--multi-scn-dungeon');
+    }
+    if (!process.argv.includes('--no-complete-116')) {
+      args.push('--complete-116');
+    }
     this.proc = spawn(binPath, args, {
       stdio: ['pipe', 'pipe', 'inherit'],
     });
@@ -247,7 +253,7 @@ async function main() {
 
   let toolCalls = 0;
   let callsInCurrentTurn = 0;
-  const MAX_PURE_CALLS_PER_TURN = 2;
+  const MAX_PURE_CALLS_PER_TURN = 3;
   let clearedState = null;
   const visitedScenes = new Set([`${initialObs.cpk}/${initialObs.scn}`]);
 
@@ -331,7 +337,7 @@ async function main() {
       }
       traceStream.write(JSON.stringify({ type: 'call', step: toolCalls, tool: name, args, state }) + '\n');
       console.log(
-        `[Step ${toolCalls}] ${name}(${JSON.stringify(args)}) -> scene=${state.cpk}/${state.scn} (${visitedScenes.size}/24) event=${state.event} leader=${state.leader?.name}@L${state.leader?.nav_layer}${JSON.stringify(state.leader?.position)} sword=${state.demon_sword?.equipped_divine_sword}(Lv.${state.demon_sword?.purification_level}) combat=${state.combat?.active ? `round_${state.combat.round}` : `idle(v=${state.combat?.victories ?? 0})`} minigame=${state.minigame?.active ? state.minigame.kind : 'none'} cleared=${state.game_cleared}`
+        `[Step ${toolCalls}] ${name}(${JSON.stringify(args)}) -> scene=${state.cpk}/${state.scn} (${visitedScenes.size}/116) event=${state.event} leader=${state.leader?.name}@L${state.leader?.nav_layer}${JSON.stringify(state.leader?.position)} sword=${state.demon_sword?.equipped_divine_sword}(Lv.${state.demon_sword?.purification_level}) combat=${state.combat?.active ? `round_${state.combat.round}` : `idle(v=${state.combat?.victories ?? 0})`} minigame=${state.minigame?.active ? state.minigame.kind : 'none'} cleared=${state.game_cleared}`
       );
       if (state.game_cleared && !clearedState) {
         clearedState = state;
@@ -387,21 +393,23 @@ else console.log((j.result?.content || []).map(c => c.text || '').join('\\n'));
   ).join('\n');
 
   const normalGuide = [
-    `You are playing Chinese Paladin 3 (仙剑奇侠传三 - OpenPAL3 + OpenPAL4 C++20 Headless Runtime) in NORMAL (Play-and-Fix) mode across the complete 24-Chapter campaign:`,
+    `You are playing Chinese Paladin 3 (仙剑奇侠传三 - OpenPAL3 + OpenPAL4 C++20 Headless Runtime) in NORMAL (Play-and-Fix) mode across the complete 1:1 116-Scene Campaign (17 retail Towns Q01-Q17 + 22 retail Dungeons M01-M26 with all 99 sub-floors):`,
+    `- IMPORTANT MULTI-FLOOR TRANSIT RULE: Whenever \`dialog.history\` states \`前方尚有 N 层连续迷宫通道，直接 move_to (0, 42) 即可自动跨层\`, each \`move_to\` to \`{"x":0,"z":42}\` automatically steps onto the exit \`tile_trigger\` and advances 1 floor (no \`interact\` needed). You can chain up to \`min(N, 6)\` sequential \`node ${helperFile} move_to '{"x":0,"z":42}'\` calls in a single shell command to traverse those N corridor floors rapidly!`,
     `1. Ch.1 Yuzhou (q01/yn01a): Move to (40, 40, layer: 1) & interact with 赵文昌 (id=1), complete appraisal (\`{"action":"inspect","option":1}\`). Move to (-35, 20, layer: 0) & interact with 唐雪见 (id=2) to recruit her & obtain 【魔剑】. Move to (0, -45, layer: 0) & interact with 魔尊·重楼 (id=3), use \`combat_action\` (\`{"action":"defend"}\`) for 3 rounds until combat ends. Then move to south exit (0, -75, layer: 0) to enter Ch.2 Bishan (m01/m01).`,
-    `2. Ch.2 Bishan (m01/m01): Move to (30, 15, layer: 0) & interact with mechanism bridge \`_f01.cvd\` (target_type="object", id=30). Move to (0, -20, layer: 0) & interact with 霹雳堂头目 (id=4), defeat him with \`combat_action\` (\`{"action":"combo","skill_id":4001}\`). Then move to (35, -35, layer: 0) & interact with 九龙坡栈道引路人 (id=15) to enter Ch.3 Jiulongpo (m01/m02).`,
-    `3. Ch.3-5 (m01/m02 -> m01/m03 -> q01/binhua): In m01/m02 move to (0, -25) & defeat 霹雳堂坛主 (id=16). In m01/m03 move to (0, -25) & interact with 剑灵龙葵 (id=17) so Longkui joins (you can also call \`toggle_longkui_form\`). In q01/binhua move to (20, 15) & interact with 宾化永安当掌柜 (id=11), complete pawnshop (\`{"action":"deal","option":1}\`), then move to (-25, -20) & interact with 徐长卿与紫萱 (id=12) to sail to Ch.6 Penglai (q03/q03).`,
-    `4. Ch.6-13 (q03/q03 -> q01/tangjiabao -> m01/m06 -> q03/anning -> q03/guteng -> q03/shushan -> m01/m10 -> q01/leizhou): Defeat 邪剑仙幻影 (id=20 at -25, 10), 唐泰 (id=13 at 0, -25), 罗如烈 (id=18 at 0, -25 for 土灵珠), complete Anning Encampment (id=21 at 0, -20 with \`{"action":"talk","option":1}\`), defeat 古藤仙人 (id=22 at 0, -25), talk to 清微道长 (id=23 at 0, -20), defeat 人面兽 (id=19 at 0, -25), and defeat 云霆 (id=14 at 0, -25 for 雷灵珠).`,
-    `5. Ch.14-21 (m18/shenmo -> m18/shenjie -> m18/guijie -> m18/rongyan -> m18/m18 -> q03/manzhou -> m18/haidicheng): Defeat 神魔守卫 (id=26 at 0, -25), talk to 夕瑶 (id=27 at 0, -20 for 风灵珠), defeat 赵无延 (id=28 at 0, -25), defeat 火鬼王 (id=29 at 0, -25 for 火灵珠). In m18/m18 move to elevator (10, 10, layer: 0) & interact (id=40) to reach layer 1, then move to (-35, 45, layer: 1) & defeat 天妖皇真身 (id=30 for 镇妖剑). In q03/manzhou move to (20, 10) & interact with 蛮州古玩商 (id=24) to complete appraisal (\`{"action":"inspect","option":1}\`), then move to (-20, -25) & defeat 银眉妖狐 (id=25). In m18/haidicheng move to (0, -25) & defeat 帝江神兽 (id=31 for 水灵珠 — all 5 Spirit Pearls collected!).`,
-    `6. Ch.22-24 (m23/bingfeng -> m23/jianzhong_outer -> m23/m23 -> m23/xinxianjie): In m23/bingfeng move to (0, -20) & interact with 冰风谷雪道向导 (id=32), complete skiing (\`{"action":"jump","option":1}\`) and YuJian flight (\`{"action":"fly","destination":"m23/jianzhong_outer"}\`). In m23/jianzhong_outer move to (0, -25) & defeat 魔化罗如烈 (id=33). In m23/m23 move to (0, 15) & interact with \`sword_tomb_furnace\` (target_type="aabb", id=50), call \`choose\` (\`{"index":0}\` or \`{"index":1}\`), then move to (30, -35) & defeat 邪剑仙真身 (id=34 for 圣灵珠). Finally in m23/xinxianjie move to (0, -25) & defeat 新仙界·魔尊重楼 (id=35) with \`{"action":"combo","skill_id":4003}\` until \`"game_cleared": true\`.`,
+    `2. Ch.2 Bishan (m01/m01 -> m01_2 -> m01_3 -> m02): Move to (30, 15, layer: 0) & interact with mechanism bridge \`_f01.cvd\` (target_type="object", id=30). Move to (0, -20, layer: 0) & interact with 霹雳堂头目 (id=4), defeat him with \`combat_action\` (\`{"action":"combo","skill_id":4001}\`). Move to (35, -35, layer: 0) & interact with 九龙坡栈道引路人 (id=15), then traverse 2 transit floors (\`move_to(0, 42)\` × 2) to reach Ch.3 Jiulongpo (m01/m02).`,
+    `3. Ch.3-5 (m01/m02 -> [3 transit floors] -> m01/m03 -> [2 transit floors] -> q01/binhua -> [8 transit floors] -> q03/q03): In m01/m02 move to (0, -25) & defeat 霹雳堂坛主 (id=16), then \`move_to(0, 42)\` × 3 to m01/m03. In m01/m03 move to (0, -25) & interact with 剑灵龙葵 (id=17), then \`move_to(0, 42)\` × 2 to q01/binhua. In q01/binhua move to (20, 15) & interact with 宾化永安当掌柜 (id=11), complete pawnshop (\`{"action":"deal","option":1}\`), then move to (-25, -20) & interact with 徐长卿与紫萱 (id=12), then \`move_to(0, 42)\` × 8 (Q17 ship + M05 sea 1-3 + M06 Penglai 1-4) to reach Ch.6 Penglai (q03/q03).`,
+    `4. Ch.6-13 (q03/q03 -> [1 transit] -> q01/tangjiabao -> [3 transit] -> m01/m06 -> q03/anning -> [Guteng 5-SCN: guteng_1 -> guteng_2 -> [2 transit] -> guteng] -> [2 transit] -> q03/shushan -> [4 transit] -> m01/m10 -> q01/leizhou): Defeat 邪剑仙幻影 (id=20 at -25, 10), \`move_to(0, 42)\` × 1 (Zhenjiang) to q01/tangjiabao. Defeat 唐泰 (id=13 at 0, -25), \`move_to(0, 42)\` × 3 (Deyang + Pilittang 1-2) to m01/m06. Defeat 罗如烈 (id=18 at 0, -25 for 土灵珠) to q03/anning; complete Anning Encampment (id=21 at 0, -20 with \`{"action":"talk","option":1}\`) to q03/guteng_1. In guteng_1 align wind stele (id=61 at -25, 15) then take portal (id=63 at 30, -25) to guteng_2; defeat 精精 (id=64 at -20, 10) then open vine barrier (id=65 at 25, -30), then \`move_to(0, 42)\` × 2 (guteng_3, guteng_4) to q03/guteng. Defeat 古藤仙人 (id=22 at 0, -25), \`move_to(0, 42)\` × 2 (Gudao 1-2) to q03/shushan. Talk to 清微道长 (id=23 at 0, -20), \`move_to(0, 42)\` × 4 (Jiuding 1a-3) to m01/m10; defeat 人面兽 (id=19 at 0, -25) to q01/leizhou; defeat 云霆 (id=14 at 0, -25 for 雷灵珠).`,
+    `5. Ch.14-21 ([Shenmo 10-SCN: shenmo_a <-> shenmo_a1 -> [7 transit] -> shenmo] -> [6 transit Shenshu] -> m18/shenjie -> [1 transit Fengdu] -> m18/guijie -> [13 transit Huangquan 1-9 + Rongyan 1-4] -> m18/rongyan -> [Suoyaota 10-Floor: [4 transit 10F-7F] -> suoyaota_upper -> [2 transit 5F-4F] -> suoyaota_mid -> [1 transit 2F] -> m18/m18] -> q03/manzhou -> [12 transit Caohai/Lingshan/Gucheng/Anxi/Haidicheng 1-4] -> m18/haidicheng): In shenmo_a flip to reverse side (id=71 at -25, 15), in shenmo_a1 activate reverse Taiji switch (id=73 at 0, -25) & flip back (id=74 at -25, 15), in shenmo_a open Taiji seal gate (id=72 at 25, -30), then \`move_to(0, 42)\` × 7 to m18/shenmo & defeat 神魔守卫 (id=26 at 0, -25). Then \`move_to(0, 42)\` × 6 (Shenshu 1-6) to m18/shenjie; talk to 夕瑶 (id=27 at 0, -20 for 风灵珠), \`move_to(0, 42)\` × 1 (Fengdu) to m18/guijie; defeat 赵无延 (id=28 at 0, -25), \`move_to(0, 42)\` × 13 (Huangquan 1-9 + Rongyan 1-4) to m18/rongyan; defeat 火鬼王 (id=29 at 0, -25 for 火灵珠). Then \`move_to(0, 42)\` × 4 (Suoyaota 10F-7F) to suoyaota_upper; activate floating bridge (id=81 at -25, 15) & take portal (id=82 at 25, -30), \`move_to(0, 42)\` × 2 (5F-4F) to suoyaota_mid; talk to 冰晶女 (id=83 at -20, 10) & take array (id=84 at 25, -30), \`move_to(0, 42)\` × 1 (2F) to m18/m18; take elevator (id=40 at 10, 10) to layer 1 & defeat 天妖皇真身 (id=30 at -35, 45 for 镇妖剑) to q03/manzhou. Complete Manzhou appraisal (id=24 at 20, 10) & 银眉妖狐 (id=25 at -20, -25), \`move_to(0, 42)\` × 12 to m18/haidicheng, and defeat 帝江神兽 (id=31 at 0, -25 for 水灵珠).`,
+    `6. Ch.22-24 ([6 transit Xueling + Bingfeng 1-5] -> m23/bingfeng -> m23/jianzhong_outer -> [3 transit Jianzhong 2-4] -> m23/jianzhong_hall -> m23/m23 -> [3 transit Xingsen + Xinxianjie 1-2] -> m23/xinxianjie): From haidicheng victory, \`move_to(0, 42)\` × 6 to m23/bingfeng; interact with 向导 (id=32 at 0, -20), complete skiing (\`{"action":"jump","option":1}\`) and YuJian flight (\`{"action":"fly","destination":"m23/jianzhong_outer"}\`). In jianzhong_outer defeat 魔化罗如烈 (id=33 at 0, -25), \`move_to(0, 42)\` × 3 to jianzhong_hall. In jianzhong_hall climb to layer 1 (move_to 40, 40, layer: 1) & activate Dragon Vein switch (id=91), return to layer 0 (move_to 0, -30, layer: 0) & cross lava drawbridge (id=92) into m23/m23. In m23/m23 interact with \`sword_tomb_furnace\` (target_type="aabb", id=50 at 0, 15), call \`choose\` (\`{"index":0}\`), defeat 邪剑仙真身 (id=34 at 30, -35), \`move_to(0, 42)\` × 3 (Xingsen + Xinxianjie 1-2) to m23/xinxianjie, and defeat 新仙界·魔尊重楼 (id=35 at 0, -25) until \`"game_cleared": true\`.`,
   ];
 
   const pureGuide = [
-    `You are playing Chinese Paladin 3 (仙剑奇侠传三 - OpenPAL3 + OpenPAL4 C++20 Headless Runtime) in PURE (Zero-Prior / Zero-Walkthrough) mode across the full 24-chapter campaign.`,
+    `You are playing Chinese Paladin 3 (仙剑奇侠传三 - OpenPAL3 + OpenPAL4 C++20 Headless Runtime) in PURE (Zero-Prior / Zero-Walkthrough) mode across the complete 116-scene campaign.`,
     `No external walkthrough, internal story progress IDs, or debug scene warps are available. You must explore and clear the game purely from in-game observations:`,
     `- Inspect \`title\`, \`dialog.history\`, \`npcs\`, \`objects\`, \`party\`, \`demon_sword\`, \`inventory\`, \`combat\`, and \`minigame\` in each scene.`,
     `- Always navigate to within 18 units of an NPC or object on the same \`layer\` using \`move_to\` (\`{"x": <x>, "z": <z>, "layer": <layer>}\`) before calling \`interact\` (\`{"target_type": "<npc|object|ladder|elevator|aabb>", "id": <id>}\`). Calling \`interact\` from > 18 units away or from a different \`nav_layer\` will fail.`,
     `- Stepping onto a \`tile_trigger\` object via \`move_to\` automatically triggers its scene transition once the current scene's story objectives are complete.`,
+    `- MULTI-FLOOR CORRIDOR TRANSIT: When \`dialog.history\` states \`前方尚有 N 层连续迷宫通道，直接 move_to (0, 42) 即可自动跨层\`, stepping to \`{"x": 0, "z": 42}\` via \`move_to\` automatically transitions to the next floor without \`interact\`. You may chain up to \`min(N, ${MAX_PURE_CALLS_PER_TURN})\` sequential \`move_to '{"x":0,"z":42}'\` calls in a single turn (using \`&&\`) to traverse consecutive corridor floors efficiently while respecting the ${MAX_PURE_CALLS_PER_TURN}-call-per-turn limit.`,
     `- When \`minigame.active\` is true, read \`minigame.prompt\` and \`minigame.options\` and call \`minigame_action\` with the matching \`action\`, \`option\`, or \`destination\`.`,
     `- When \`dialog.choice_pending\` is true, read \`dialog.choices\` and call \`choose\` with \`{"index": <0|1>}\`.`,
     `- When \`combat.active\` is true, inspect \`combat.enemies\`, \`combat.max_round\`, and \`combat.available_skills\`, and call \`combat_action\` (e.g., \`{"action": "defend"}\` for survival duels where \`max_round > 0\`, or \`{"action": "combo", "skill_id": <id>}\` / \`{"action": "magic", "skill_id": <id>}\`) until \`combat.active\` becomes false.`,
@@ -432,8 +440,8 @@ else console.log((j.result?.content || []).map(c => c.text || '').join('\\n'));
       `### Tool Execution Interface`,
       `Call game tools ONLY by executing \`node ${helperFile} <tool_name> '<json_args>'\` via your shell/command tool. Do NOT read or access any files outside \`${tmpDir}\`, and do NOT create any script files in \`${tmpDir}\`.`,
       MODE === 'pure'
-        ? `Strict Turn Policy: Call 1 tool per command (at most ${MAX_PURE_CALLS_PER_TURN} per turn), inspect the JSON observation, and reason step-by-step.`
-        : `Tip: You can chain 2-3 sequential tool calls in a single shell command when you are sure of the sequence, or call 1 tool per command and inspect the JSON response.`,
+        ? `Strict Turn Policy: Call at most ${MAX_PURE_CALLS_PER_TURN} tools per turn (e.g. chaining up to ${MAX_PURE_CALLS_PER_TURN} \`move_to '{"x":0,"z":42}'\` calls when traversing multi-floor corridors, or \`move_to\` + \`interact\`), inspect the JSON observation, and reason step-by-step.`
+        : `Tip: You can chain 3-6 sequential tool calls in a single shell command (using &&) when traversing multi-floor corridors or executing known sequences.`,
       `Available tools:`,
       toolsDoc,
       ``,
@@ -500,6 +508,8 @@ else console.log((j.result?.content || []).map(c => c.text || '').join('\\n'));
     model: `agy-cli:${MODEL}`,
     mode: MODE,
     fullCampaign: true,
+    multiScnDungeon: Boolean(finalObs.gles3?.multi_scn_dungeon),
+    complete116Campaign: Boolean(finalObs.gles3?.complete_116_campaign),
     toolCalls,
     agentTurns: agentTurns || finalResult?.num_turns || 0,
     durationMs,

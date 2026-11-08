@@ -518,6 +518,52 @@ CampaignCpkSuite BuildFullPal3CampaignCpkSuite() {
                 {21, "安宁村篝火守夜人", 180.0f, 0, 0.0f, -20.0f, 711, "c01", 0, {}, 215.0f},
             });
 
+        ScnNode wind_stele{};
+        wind_stele.index = 61;
+        wind_stele.active = 1;
+        wind_stele.name = "southwest_wind_stele";
+        wind_stele.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        wind_stele.position = {-25.0f, 0.0f, 15.0f};
+        wind_stele.nav_layer = 0;
+        wind_stele.sce_proc_id = 721;
+
+        ScnNode north_gale_trap{};
+        north_gale_trap.index = 62;
+        north_gale_trap.active = 1;
+        north_gale_trap.name = "north_reverse_gale_trap";
+        north_gale_trap.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        north_gale_trap.position = {0.0f, 0.0f, -35.0f};
+        north_gale_trap.nav_layer = 0;
+        north_gale_trap.sce_proc_id = 722;
+
+        ScnNode east_wind_portal{};
+        east_wind_portal.index = 63;
+        east_wind_portal.active = 1;
+        east_wind_portal.name = "east_wind_portal_to_guteng2";
+        east_wind_portal.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        east_wind_portal.position = {30.0f, 0.0f, -25.0f};
+        east_wind_portal.nav_layer = 0;
+        east_wind_portal.sce_proc_id = 723;
+
+        const auto scn_guteng_1 = MakeSimpleScn(
+            "q03", "guteng_1", "q03", {}, {wind_stele, north_gale_trap, east_wind_portal});
+
+        ScnNode vine_barrier{};
+        vine_barrier.index = 65;
+        vine_barrier.active = 1;
+        vine_barrier.name = "vine_barrier_to_guteng_boss";
+        vine_barrier.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        vine_barrier.position = {25.0f, 0.0f, -30.0f};
+        vine_barrier.nav_layer = 0;
+        vine_barrier.sce_proc_id = 725;
+
+        const auto scn_guteng_2 = MakeSimpleScn(
+            "q03", "guteng_2", "q03",
+            {
+                {64, "古藤林·猴妖精精", 180.0f, 0, -20.0f, 10.0f, 724, "c01", 0, {}, 215.0f},
+            },
+            {vine_barrier});
+
         const auto scn_guteng = MakeSimpleScn(
             "q03", "guteng", "q03",
             {
@@ -645,10 +691,58 @@ CampaignCpkSuite BuildFullPal3CampaignCpkSuite() {
             a.EmitLoadScene("m18", "haidicheng");
             sce.procs[715] = a.BuildProc(715, "lingshan_fox_to_haidicheng");
         }
+        {
+            SceAssembler a;
+            a.EmitAssign(kSceVarMainStory, 35600);
+            a.EmitDlg("景天：古藤林西南狂风呼啸，北侧旋涡是逆风死路，得先开启左侧【southwest_wind_stele (id=61)】校准风向，再走右侧【east_wind_portal_to_guteng2 (id=63)】深入东北林区！");
+            sce.procs[15] = a.BuildProc(15, "guteng_1_init");
+        }
+        {
+            SceAssembler a;
+            a.EmitAssign(kSceVarMainStory, 35800);
+            a.EmitDlg("唐雪见：前面藤蔓障壁封死了去路，先找树上的【古藤林·猴妖精精 (id=64)】切磋讨回包裹，请它破开【vine_barrier_to_guteng_boss (id=65)】！");
+            sce.procs[16] = a.BuildProc(16, "guteng_2_init");
+        }
+        {
+            SceAssembler a;
+            a.EmitObjectPlay(61, "wind_stele_open", 1.0f);
+            a.EmitAssign(-1001, 1);
+            a.EmitAssign(kSceVarMainStory, 35700);
+            a.EmitDlg("（西南风向石碑亮起青光，林间逆风平息，通往古藤林东北的【east_wind_portal_to_guteng2 (id=63)】顺风传送阵已开启！）");
+            sce.procs[721] = a.BuildProc(721, "align_wind_stele");
+        }
+        {
+            SceAssembler a;
+            a.EmitRoleSetPos(0, 16, 16);
+            a.EmitDlg("（狂暴的逆风旋涡将众人吹回起点！必须先开启左侧【southwest_wind_stele (id=61)】，再走右侧【east_wind_portal_to_guteng2 (id=63)】！）");
+            sce.procs[722] = a.BuildProc(722, "north_gale_trap");
+        }
+        {
+            SceAssembler a;
+            a.EmitLoadScene("q03", "guteng_2");
+            sce.procs[723] = a.BuildProc(723, "to_guteng_2");
+        }
+        {
+            SceAssembler a;
+            a.EmitDlg("精精：吱吱！想过古藤林东北，先接我精精大爷几招【飞龙探云手】！");
+            a.EmitCombatBoss({9002, 0, 0, 0, 0, 0});
+            a.EmitGetCombat(0);
+            a.EmitAssign(-1002, 1);
+            a.EmitAssign(kSceVarMainStory, 35950);
+            a.EmitDlg("精精：服了服了！飞龙探云手传给景天小哥，前方【vine_barrier_to_guteng_boss (id=65)】的古藤灵障我也替你们解开啦！");
+            sce.procs[724] = a.BuildProc(724, "jingjing_battle");
+        }
+        {
+            SceAssembler a;
+            a.EmitLoadScene("q03", "guteng");
+            sce.procs[725] = a.BuildProc(725, "to_guteng_core");
+        }
 
         suite.q03_cpk = BuildPal3CpkArchive({
             {"q03.scn", SerializeScnFile(scn_q03), CpkCodec::lzo},
             {"anning.scn", SerializeScnFile(scn_anning), CpkCodec::lzo},
+            {"guteng_1.scn", SerializeScnFile(scn_guteng_1), CpkCodec::lzo},
+            {"guteng_2.scn", SerializeScnFile(scn_guteng_2), CpkCodec::lzo},
             {"guteng.scn", SerializeScnFile(scn_guteng), CpkCodec::lzo},
             {"shushan.scn", SerializeScnFile(scn_shushan), CpkCodec::lzo},
             {"manzhou.scn", SerializeScnFile(scn_manzhou), CpkCodec::lzo},
@@ -676,11 +770,90 @@ CampaignCpkSuite BuildFullPal3CampaignCpkSuite() {
         elevator.ladder_nav_coord2 = {22, 22};
         elevator.ladder_switch_layer = 1;
 
+        ScnNode shenmo_flip_to_rev{};
+        shenmo_flip_to_rev.index = 71;
+        shenmo_flip_to_rev.active = 1;
+        shenmo_flip_to_rev.name = "yinyang_flip_portal_to_reverse";
+        shenmo_flip_to_rev.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        shenmo_flip_to_rev.position = {-25.0f, 0.0f, 15.0f};
+        shenmo_flip_to_rev.nav_layer = 0;
+        shenmo_flip_to_rev.sce_proc_id = 821;
+
+        ScnNode shenmo_taiji_gate{};
+        shenmo_taiji_gate.index = 72;
+        shenmo_taiji_gate.active = 1;
+        shenmo_taiji_gate.name = "taiji_seal_gate_to_shenmo_core";
+        shenmo_taiji_gate.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        shenmo_taiji_gate.position = {25.0f, 0.0f, -30.0f};
+        shenmo_taiji_gate.nav_layer = 0;
+        shenmo_taiji_gate.sce_proc_id = 822;
+
+        const auto scn_shenmo_a = MakeSimpleScn(
+            "m18", "shenmo_a", "m18", {}, {shenmo_flip_to_rev, shenmo_taiji_gate});
+
+        ScnNode reverse_taiji_switch{};
+        reverse_taiji_switch.index = 73;
+        reverse_taiji_switch.active = 1;
+        reverse_taiji_switch.name = "reverse_taiji_switch";
+        reverse_taiji_switch.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        reverse_taiji_switch.position = {0.0f, 0.0f, -25.0f};
+        reverse_taiji_switch.nav_layer = 0;
+        reverse_taiji_switch.sce_proc_id = 823;
+
+        ScnNode shenmo_flip_to_pos{};
+        shenmo_flip_to_pos.index = 74;
+        shenmo_flip_to_pos.active = 1;
+        shenmo_flip_to_pos.name = "yinyang_flip_portal_to_positive";
+        shenmo_flip_to_pos.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        shenmo_flip_to_pos.position = {-25.0f, 0.0f, 15.0f};
+        shenmo_flip_to_pos.nav_layer = 0;
+        shenmo_flip_to_pos.sce_proc_id = 824;
+
+        const auto scn_shenmo_a1 = MakeSimpleScn(
+            "m18", "shenmo_a1", "m18", {}, {reverse_taiji_switch, shenmo_flip_to_pos});
+
         const auto scn_shenmo = MakeSimpleScn(
             "m18", "shenmo", "m18",
             {
                 {26, "神魔之井·神魔守卫", 180.0f, 0, 0.0f, -25.0f, 812, "c01", 0, {}, 215.0f},
             });
+
+        ScnNode suoyaota_float_bridge{};
+        suoyaota_float_bridge.index = 81;
+        suoyaota_float_bridge.active = 1;
+        suoyaota_float_bridge.name = "floating_bridge_switch";
+        suoyaota_float_bridge.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        suoyaota_float_bridge.position = {-25.0f, 0.0f, 15.0f};
+        suoyaota_float_bridge.nav_layer = 0;
+        suoyaota_float_bridge.sce_proc_id = 825;
+
+        ScnNode suoyaota_to_mid{};
+        suoyaota_to_mid.index = 82;
+        suoyaota_to_mid.active = 1;
+        suoyaota_to_mid.name = "portal_to_suoyaota_mid";
+        suoyaota_to_mid.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        suoyaota_to_mid.position = {25.0f, 0.0f, -30.0f};
+        suoyaota_to_mid.nav_layer = 0;
+        suoyaota_to_mid.sce_proc_id = 826;
+
+        const auto scn_suoyaota_upper = MakeSimpleScn(
+            "m18", "suoyaota_upper", "m18", {}, {suoyaota_float_bridge, suoyaota_to_mid});
+
+        ScnNode suoyaota_to_bottom{};
+        suoyaota_to_bottom.index = 84;
+        suoyaota_to_bottom.active = 1;
+        suoyaota_to_bottom.name = "five_element_array_to_bottom";
+        suoyaota_to_bottom.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        suoyaota_to_bottom.position = {25.0f, 0.0f, -30.0f};
+        suoyaota_to_bottom.nav_layer = 0;
+        suoyaota_to_bottom.sce_proc_id = 828;
+
+        const auto scn_suoyaota_mid = MakeSimpleScn(
+            "m18", "suoyaota_mid", "m18",
+            {
+                {83, "锁妖塔·冰晶女", 180.0f, 0, -20.0f, 10.0f, 827, "c01", 0, {}, 215.0f},
+            },
+            {suoyaota_to_bottom});
 
         const auto scn_shenjie = MakeSimpleScn(
             "m18", "shenjie", "m18",
@@ -828,13 +1001,91 @@ CampaignCpkSuite BuildFullPal3CampaignCpkSuite() {
             a.EmitLoadScene("m23", "bingfeng");
             sce.procs[817] = a.BuildProc(817, "haidicheng_water_pearl");
         }
+        {
+            SceAssembler a;
+            a.EmitAssign(kSceVarMainStory, 43200);
+            a.EmitDlg("重楼：神魔之井分【正面】与【反面】两重空间！正面的【taiji_seal_gate_to_shenmo_core (id=72)】被反面枢机锁死，需先踏入【yinyang_flip_portal_to_reverse (id=71)】翻转至反面甲区开启机关枢，再翻转回正面通行！");
+            sce.procs[16] = a.BuildProc(16, "shenmo_a_init");
+        }
+        {
+            SceAssembler a;
+            a.EmitAssign(kSceVarMainStory, 43500);
+            a.EmitDlg("徐长卿：此处便是【神魔之井·反面甲区】！快去前方扳动【reverse_taiji_switch (id=73)】解开正面封印，再从【yinyang_flip_portal_to_positive (id=74)】翻转回正面甲区！");
+            sce.procs[17] = a.BuildProc(17, "shenmo_a1_init");
+        }
+        {
+            SceAssembler a;
+            a.EmitAssign(kSceVarMainStory, 49850);
+            a.EmitDlg("徐长卿：锁妖塔上层悬空浮桥尚未连通，先去左侧开启【floating_bridge_switch (id=81)】架起浮桥，再踏入【portal_to_suoyaota_mid (id=82)】前往锁妖塔中层！");
+            sce.procs[18] = a.BuildProc(18, "suoyaota_upper_init");
+        }
+        {
+            SceAssembler a;
+            a.EmitAssign(kSceVarMainStory, 49950);
+            a.EmitDlg("紫萱：锁妖塔中层的五灵镇狱阵被寒冰封印，先与前方的【锁妖塔·冰晶女 (id=83)】交谈解开心结，再开启【five_element_array_to_bottom (id=84)】进入锁妖塔底层！");
+            sce.procs[19] = a.BuildProc(19, "suoyaota_mid_init");
+        }
+        {
+            SceAssembler a;
+            a.EmitDlg("（踏入阴阳翻转法阵，天地倒悬，众人翻转至【神魔之井·反面甲区】！）");
+            a.EmitLoadScene("m18", "shenmo_a1");
+            sce.procs[821] = a.BuildProc(821, "flip_to_shenmo_a1");
+        }
+        {
+            SceAssembler a;
+            a.EmitLoadScene("m18", "shenmo");
+            sce.procs[822] = a.BuildProc(822, "enter_shenmo_core");
+        }
+        {
+            SceAssembler a;
+            a.EmitObjectPlay(73, "taiji_switch_open", 1.0f);
+            a.EmitAssign(-1003, 1);
+            a.EmitAssign(kSceVarMainStory, 43800);
+            a.EmitDlg("（反面太极机关枢轰然转动！正面甲区的【taiji_seal_gate_to_shenmo_core (id=72)】封印已彻底解开，快通过【yinyang_flip_portal_to_positive (id=74)】返回正面吧！）");
+            sce.procs[823] = a.BuildProc(823, "activate_reverse_taiji_switch");
+        }
+        {
+            SceAssembler a;
+            a.EmitDlg("（再度踏入阴阳翻转法阵，众人重返【神魔之井·正面甲区】！）");
+            a.EmitLoadScene("m18", "shenmo_a");
+            sce.procs[824] = a.BuildProc(824, "flip_back_to_shenmo_a");
+        }
+        {
+            SceAssembler a;
+            a.EmitObjectPlay(81, "floating_bridge", 1.0f);
+            a.EmitAssign(-1004, 1);
+            a.EmitAssign(kSceVarMainStory, 49900);
+            a.EmitDlg("（咔哒数声，锁妖塔悬空浮板依次拼接成桥，通往下层的【portal_to_suoyaota_mid (id=82)】已可通行！）");
+            sce.procs[825] = a.BuildProc(825, "open_floating_bridge");
+        }
+        {
+            SceAssembler a;
+            a.EmitLoadScene("m18", "suoyaota_mid");
+            sce.procs[826] = a.BuildProc(826, "to_suoyaota_mid");
+        }
+        {
+            SceAssembler a;
+            a.EmitAssign(-1005, 1);
+            a.EmitAssign(kSceVarMainStory, 50000);
+            a.EmitDlg("冰晶女：原来那位蜀山弟子至死也未曾负我……多谢诸位相告，小女子这便散去寒冰真气，为你们解开【five_element_array_to_bottom (id=84)】五灵镇狱阵！");
+            sce.procs[827] = a.BuildProc(827, "talk_bingjingnv");
+        }
+        {
+            SceAssembler a;
+            a.EmitLoadScene("m18", "m18");
+            sce.procs[828] = a.BuildProc(828, "to_suoyaota_bottom");
+        }
 
         suite.m18_cpk = BuildPal3CpkArchive({
             {"m18.scn", SerializeScnFile(scn_m18), CpkCodec::lzo},
+            {"shenmo_a.scn", SerializeScnFile(scn_shenmo_a), CpkCodec::lzo},
+            {"shenmo_a1.scn", SerializeScnFile(scn_shenmo_a1), CpkCodec::lzo},
             {"shenmo.scn", SerializeScnFile(scn_shenmo), CpkCodec::lzo},
             {"shenjie.scn", SerializeScnFile(scn_shenjie), CpkCodec::lzo},
             {"guijie.scn", SerializeScnFile(scn_guijie), CpkCodec::lzo},
             {"rongyan.scn", SerializeScnFile(scn_rongyan), CpkCodec::lzo},
+            {"suoyaota_upper.scn", SerializeScnFile(scn_suoyaota_upper), CpkCodec::lzo},
+            {"suoyaota_mid.scn", SerializeScnFile(scn_suoyaota_mid), CpkCodec::lzo},
             {"haidicheng.scn", SerializeScnFile(scn_haidicheng), CpkCodec::lzo},
             {"m18.sce", SerializeSceFile(sce), CpkCodec::lzo},
             {"m18/m18.nav", SerializeNavFile(BuildDualLayerNavMesh(false)), CpkCodec::lzo},
@@ -845,7 +1096,8 @@ CampaignCpkSuite BuildFullPal3CampaignCpkSuite() {
 
     // ========================================================================
     // 5. m23.cpk (Act V: Ch.22 冰风谷滑雪与御剑 `bingfeng`, Ch.23上 剑冢外围 `jianzhong_outer`,
-    //                    Ch.23下 剑冢铸剑厅 `m23`, Ch.24 新仙界重楼决战与五大结局 `xinxianjie`)
+    //                    Ch.23中 剑冢内殿断剑龙脉阵 `jianzhong_hall`, Ch.23下 剑冢铸剑厅 `m23`,
+    //                    Ch.24 新仙界重楼决战与五大结局 `xinxianjie`)
     // ========================================================================
     {
         ScnNode furnace{};
@@ -859,6 +1111,35 @@ CampaignCpkSuite BuildFullPal3CampaignCpkSuite() {
         furnace.aabb_trigger_coord2 = {20.0f, 25.0f, 30.0f};
         furnace.sce_proc_id = 901;
 
+        ScnNode hall_ladder{};
+        hall_ladder.index = 90;
+        hall_ladder.active = 1;
+        hall_ladder.name = "sword_tomb_stone_steps";
+        hall_ladder.node_type = static_cast<std::uint16_t>(ScnNodeType::ladder);
+        hall_ladder.position = {30.0f, 0.0f, 30.0f};
+        hall_ladder.nav_layer = 0;
+        hall_ladder.ladder_nav_coord1 = {20, 20};
+        hall_ladder.ladder_nav_coord2 = {21, 21};
+        hall_ladder.ladder_switch_layer = 1;
+
+        ScnNode dragon_vein_switch{};
+        dragon_vein_switch.index = 91;
+        dragon_vein_switch.active = 1;
+        dragon_vein_switch.name = "dragon_vein_switch_upper";
+        dragon_vein_switch.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        dragon_vein_switch.position = {40.0f, 20.0f, 40.0f};
+        dragon_vein_switch.nav_layer = 1;
+        dragon_vein_switch.sce_proc_id = 921;
+
+        ScnNode lava_drawbridge{};
+        lava_drawbridge.index = 92;
+        lava_drawbridge.active = 1;
+        lava_drawbridge.name = "lava_drawbridge_to_furnace_hall";
+        lava_drawbridge.node_type = static_cast<std::uint16_t>(ScnNodeType::mechanism);
+        lava_drawbridge.position = {0.0f, 0.0f, -30.0f};
+        lava_drawbridge.nav_layer = 0;
+        lava_drawbridge.sce_proc_id = 922;
+
         const auto scn_bingfeng = MakeSimpleScn(
             "m23", "bingfeng", "m23",
             {
@@ -870,6 +1151,11 @@ CampaignCpkSuite BuildFullPal3CampaignCpkSuite() {
             {
                 {33, "剑冢外围·魔化罗如烈", 180.0f, 0, 0.0f, -25.0f, 912, "c01", 0, {}, 215.0f},
             });
+
+        const auto scn_jianzhong_hall = MakeSimpleScn(
+            "m23", "jianzhong_hall", "m23",
+            {},
+            {hall_ladder, dragon_vein_switch, lava_drawbridge});
 
         const auto scn_m23 = MakeSimpleScn(
             "m23", "m23", "m23",
@@ -909,6 +1195,12 @@ CampaignCpkSuite BuildFullPal3CampaignCpkSuite() {
             a.EmitAssign(kSceVarMainStory, 92000);
             a.EmitDlg("重楼：飞蓬！邪剑仙既除，锁妖塔已封，来这【新仙界】与本座尽情一战吧！");
             sce.procs[13] = a.BuildProc(13, "xinxianjie_init");
+        }
+        {
+            SceAssembler a;
+            a.EmitAssign(kSceVarMainStory, 79600);
+            a.EmitDlg("龙葵：王兄，剑冢内殿的【lava_drawbridge_to_furnace_hall (id=92)】熔岩吊桥悬起，机关枢【dragon_vein_switch_upper (id=91)】在二层高台（layer 1）！需先登上二层开启龙脉机关，再回到一层（layer 0）通过吊桥大门进入铸剑厅！");
+            sce.procs[14] = a.BuildProc(14, "jianzhong_hall_init");
         }
         {
             // proc 901: Sword Tomb choice (`DlgSel`) writing choice to -32767
@@ -971,11 +1263,25 @@ CampaignCpkSuite BuildFullPal3CampaignCpkSuite() {
             a.EmitAssign(kSceVarMainStory, 100000);
             sce.procs[914] = a.BuildProc(914, "xinxianjie_chonglou_finale");
         }
+        {
+            SceAssembler a;
+            a.EmitObjectPlay(91, "dragon_vein_open", 1.0f);
+            a.EmitAssign(-1006, 1);
+            a.EmitAssign(kSceVarMainStory, 79800);
+            a.EmitDlg("（二层古剑龙脉机关枢开启！下层（layer 0）的【lava_drawbridge_to_furnace_hall (id=92)】熔岩吊桥已轰然放下，快回一层通过大门吧！）");
+            sce.procs[921] = a.BuildProc(921, "activate_dragon_vein_switch");
+        }
+        {
+            SceAssembler a;
+            a.EmitLoadScene("m23", "m23");
+            sce.procs[922] = a.BuildProc(922, "enter_m23_furnace_hall");
+        }
 
         suite.m23_cpk = BuildPal3CpkArchive({
             {"m23.scn", SerializeScnFile(scn_m23), CpkCodec::lzo},
             {"bingfeng.scn", SerializeScnFile(scn_bingfeng), CpkCodec::lzo},
             {"jianzhong_outer.scn", SerializeScnFile(scn_jianzhong_outer), CpkCodec::lzo},
+            {"jianzhong_hall.scn", SerializeScnFile(scn_jianzhong_hall), CpkCodec::lzo},
             {"xinxianjie.scn", SerializeScnFile(scn_xinxianjie), CpkCodec::lzo},
             {"m23.sce", SerializeSceFile(sce), CpkCodec::lzo},
             {"m23/m23.nav", SerializeNavFile(BuildDualLayerNavMesh(false)), CpkCodec::lzo},
@@ -1072,29 +1378,224 @@ void ChapterHost::InitializeFromCpkStreams(std::istream& basedata_cpk,
     const SubSceneSpec q03_specs[] = {
         {"q03", "q03.scn", 1, "蓬莱码头·安宁村宿营与古藤林"},
         {"anning", "anning.scn", 11, "第09章·安宁村万仞孤峰篝火宿营夜话"},
-        {"guteng", "guteng.scn", 12, "第10章·古藤林精精洞府合击破古藤仙人"},
+        {"guteng_1", "guteng_1.scn", 15, "第10章上·古藤林西南风向迷阵"},
+        {"guteng_2", "guteng_2.scn", 16, "第10章中·古藤林东北精精洞口"},
+        {"guteng", "guteng.scn", 12, "第10章下·古藤林洞府合击破古藤仙人"},
         {"shushan", "shushan.scn", 13, "第11章·蜀山派无极阁五长老托付五灵"},
         {"manzhou", "manzhou.scn", 14, "第19-20章·蛮州女娲庙回魂仙梦与灵山青瓷鉴宝"},
     };
     load_multi_scene_cpk(q03_cpk, "q03", "q03", q03_specs);
 
     const SubSceneSpec m18_specs[] = {
-        {"m18", "m18.scn", 1, "蜀山锁妖塔·冰风谷滑雪与御剑飞行"},
-        {"shenmo", "shenmo.scn", 11, "第14章·神魔之井正反双层六界裂隙"},
+        {"m18", "m18.scn", 1, "第18章下·蜀山锁妖塔底层封印坛"},
+        {"shenmo_a", "shenmo_a.scn", 16, "第14章上·神魔之井正面甲区（太极封印门）"},
+        {"shenmo_a1", "shenmo_a1.scn", 17, "第14章中·神魔之井反面甲区（反面太极枢）"},
+        {"shenmo", "shenmo.scn", 11, "第14章下·神魔之井核心六界裂隙"},
         {"shenjie", "shenjie.scn", 12, "第15章·神界天庭夕瑶神树赐风灵珠"},
         {"guijie", "guijie.scn", 13, "第16章·鬼界黄泉路无常殿智破赵无延"},
         {"rongyan", "rongyan.scn", 14, "第17章·鬼界熔岩地狱诛火鬼王夺火灵珠"},
+        {"suoyaota_upper", "suoyaota_upper.scn", 18, "第18章上·蜀山锁妖塔上层（浮桥机关层）"},
+        {"suoyaota_mid", "suoyaota_mid.scn", 19, "第18章中·蜀山锁妖塔中层（冰晶女与五灵阵）"},
         {"haidicheng", "haidicheng.scn", 15, "第21章·东海海底城诛帝江神兽集齐水灵珠"},
     };
     load_multi_scene_cpk(m18_cpk, "m18", "m18", m18_specs);
 
     const SubSceneSpec m23_specs[] = {
-        {"m23", "m23.scn", 1, "雷州剑冢铸剑抉择·新仙界重楼决战"},
+        {"m23", "m23.scn", 1, "第23章下·雷州剑冢铸剑厅与圣灵抉择"},
         {"bingfeng", "bingfeng.scn", 11, "第22章·雪岭镇冰风谷极速滑雪与蜀山御剑"},
         {"jianzhong_outer", "jianzhong_outer.scn", 12, "第23章上·雷州剑冢外围诛魔化罗如烈"},
+        {"jianzhong_hall", "jianzhong_hall.scn", 14, "第23章中·雷州剑冢内殿（双层断剑龙脉阵）"},
         {"xinxianjie", "xinxianjie.scn", 13, "第24章·新仙界重楼终极决战与五大结局"},
     };
     load_multi_scene_cpk(m23_cpk, "m23", "m23", m23_specs);
+
+    RegisterComplete116CampaignScenes();
+}
+
+void ChapterHost::RegisterComplete116CampaignScenes() {
+    struct TransitSceneSpec {
+        std::string_view cpk_id;
+        std::string_view scn_id;
+        std::string_view title;
+        std::string_view next_cpk;
+        std::string_view next_scn;
+        std::string_view final_dest_title;
+        int remaining_steps;
+    };
+
+    static constexpr TransitSceneSpec kComplete116TransitSpecs[] = {
+        // 1. M01 璧山山洞 2 层 (m01/m01 -> m01/m02)
+        {"m01", "m01_2", "璧山山洞壹（M01-2）", "m01", "m01_3", "第03章·九龙坡", 2},
+        {"m01", "m01_3", "璧山山洞贰（M01-3）", "m01", "m02", "第03章·九龙坡", 1},
+
+        // 2. M02 九龙坡山洞与小木屋 3 层 (m01/m02 -> m01/m03)
+        {"m01", "m02_2", "九龙坡山洞（M02-2）", "m01", "m02_3", "第04章·大渡口", 3},
+        {"m01", "m02_3", "九龙坡小木屋壹层（M02-3）", "m01", "m02_4", "第04章·大渡口", 2},
+        {"m01", "m02_4", "九龙坡小木屋贰层（M02-4）", "m01", "m03", "第04章·大渡口", 1},
+
+        // 3. M04 船·长江 2 层 (m01/m03 -> q01/binhua)
+        {"m01", "m04_1", "船·长江甲板（M04-1）", "m01", "m04_2", "第05章·宾化城", 2},
+        {"m01", "m04_2", "船·长江底舱（M04-2）", "q01", "binhua", "第05章·宾化城", 1},
+
+        // 4. Q17 渡海官船 + M05 船·海 3 层 + M06 蓬莱迷宫 4 层 (q01/binhua -> q03/q03)
+        {"q01", "q17_ship", "宾化渡海官船（Q17）", "m01", "m05_1", "第06章·蓬莱御剑堂", 8},
+        {"m01", "m05_1", "船·海壹层（M05-1）", "m01", "m05_2", "第06章·蓬莱御剑堂", 7},
+        {"m01", "m05_2", "船·海贰层（M05-2）", "m01", "m05_3", "第06章·蓬莱御剑堂", 6},
+        {"m01", "m05_3", "船·海叁层（M05-3）", "m01", "penglai_1", "第06章·蓬莱御剑堂", 5},
+        {"m01", "penglai_1", "蓬莱仙岛码头（M06-1）", "m01", "penglai_2", "第06章·蓬莱御剑堂", 4},
+        {"m01", "penglai_2", "蓬莱迷宫上层（M06-2）", "m01", "penglai_3", "第06章·蓬莱御剑堂", 3},
+        {"m01", "penglai_3", "蓬莱迷宫下层（M06-3）", "m01", "penglai_4", "第06章·蓬莱御剑堂", 2},
+        {"m01", "penglai_4", "蓬莱密道（M06-4）", "q03", "q03", "第06章·蓬莱御剑堂", 1},
+
+        // 5. Q03 镇江城 (q03/q03 -> q01/tangjiabao)
+        {"q03", "zhenjiang", "镇江城·虎踞镖局（Q03）", "q01", "tangjiabao", "第07章·唐家堡", 1},
+
+        // 6. Q06 德阳城 + M09 霹雳堂总舵东西部 (q01/tangjiabao -> m01/m06)
+        {"q03", "deyang", "德阳城·海棠精舍（Q06）", "m01", "pilittang_1", "第08章·霹雳堂地牢", 3},
+        {"m01", "pilittang_1", "霹雳堂总舵西部（M09-1）", "m01", "pilittang_2", "第08章·霹雳堂地牢", 2},
+        {"m01", "pilittang_2", "霹雳堂总舵东部（M09-2）", "m01", "m06", "第08章·霹雳堂地牢", 1},
+
+        // 7. m10 古藤林东南与风清台 (q03/guteng_2 -> q03/guteng)
+        {"q03", "guteng_3", "古藤林东南（M10-3）", "q03", "guteng_4", "第10章下·古藤林西南洞府", 2},
+        {"q03", "guteng_4", "古藤林风清台（M10-4）", "q03", "guteng", "第10章下·古藤林西南洞府", 1},
+
+        // 8. m11 蜀山故道 2 层 (q03/guteng -> q03/shushan)
+        {"q03", "gudao_1", "蜀山故道壹层（M11-1）", "q03", "gudao_2", "第11章·蜀山派无极阁", 2},
+        {"q03", "gudao_2", "蜀山故道贰层（M11-2）", "q03", "shushan", "第11章·蜀山派无极阁", 1},
+
+        // 9. m08 九顶山前 4 层 (q03/shushan -> m01/m10)
+        {"m01", "jiuding_1a", "九顶山下层（M08-1A）", "m01", "jiuding_1b", "第12章·九顶山定仙峰", 4},
+        {"m01", "jiuding_1b", "九顶山上层（M08-1B）", "m01", "jiuding_2", "第12章·九顶山定仙峰", 3},
+        {"m01", "jiuding_2", "九顶山壹层（M08-2）", "m01", "jiuding_3", "第12章·九顶山定仙峰", 2},
+        {"m01", "jiuding_3", "九顶山贰层（M08-3）", "m01", "m10", "第12章·九顶山定仙峰", 1},
+
+        // 10. M15 神魔之井甲~庚 7 区 (m18/shenmo_a -> m18/shenmo)
+        {"m18", "shenmo_jia", "神魔之井甲区（M15-A）", "m18", "shenmo_yi", "第14章下·神魔之井辛区中枢", 7},
+        {"m18", "shenmo_yi", "神魔之井乙区（M15-A1）", "m18", "shenmo_bing", "第14章下·神魔之井辛区中枢", 6},
+        {"m18", "shenmo_bing", "神魔之井丙区（M15-B）", "m18", "shenmo_ding", "第14章下·神魔之井辛区中枢", 5},
+        {"m18", "shenmo_ding", "神魔之井丁区（M15-B1）", "m18", "shenmo_wu", "第14章下·神魔之井辛区中枢", 4},
+        {"m18", "shenmo_wu", "神魔之井戊区（M15-C）", "m18", "shenmo_ji", "第14章下·神魔之井辛区中枢", 3},
+        {"m18", "shenmo_ji", "神魔之井己区（M15-C1）", "m18", "shenmo_geng", "第14章下·神魔之井辛区中枢", 2},
+        {"m18", "shenmo_geng", "神魔之井庚区（M15-D）", "m18", "shenmo", "第14章下·神魔之井辛区中枢", 1},
+
+        // 11. M16 神树 6 层 (m18/shenmo -> m18/shenjie)
+        {"m18", "shenshu_1", "神树壹层（M16-1）", "m18", "shenshu_2", "第15章·神界天门", 6},
+        {"m18", "shenshu_2", "神树贰层（M16-2）", "m18", "shenshu_3", "第15章·神界天门", 5},
+        {"m18", "shenshu_3", "神树叁层（M16-3）", "m18", "shenshu_4", "第15章·神界天门", 4},
+        {"m18", "shenshu_4", "神树肆层（M16-4）", "m18", "shenshu_5", "第15章·神界天门", 3},
+        {"m18", "shenshu_5", "神树伍层（M16-5）", "m18", "shenshu_6", "第15章·神界天门", 2},
+        {"m18", "shenshu_6", "神树陆层（M16-6）", "m18", "shenjie", "第15章·神界天门", 1},
+
+        // 12. Q13 酆都鬼城 (m18/shenjie -> m18/guijie)
+        {"m18", "fengdu", "酆都鬼城（Q13）", "m18", "guijie", "第16章·鬼界外围无常殿", 1},
+
+        // 13. M21 黄泉路 9 层 + M20 熔岩地狱前 4 层 (m18/guijie -> m18/rongyan)
+        {"m18", "huangquan_1", "黄泉路壹层（M21-1）", "m18", "huangquan_2", "第17章·熔岩地狱火鬼殿", 13},
+        {"m18", "huangquan_2", "黄泉路贰层（M21-2）", "m18", "huangquan_3", "第17章·熔岩地狱火鬼殿", 12},
+        {"m18", "huangquan_3", "黄泉路叁层（M21-3）", "m18", "huangquan_4", "第17章·熔岩地狱火鬼殿", 11},
+        {"m18", "huangquan_4", "黄泉路肆层（M21-4）", "m18", "huangquan_5", "第17章·熔岩地狱火鬼殿", 10},
+        {"m18", "huangquan_5", "黄泉路伍层（M21-5）", "m18", "huangquan_6", "第17章·熔岩地狱火鬼殿", 9},
+        {"m18", "huangquan_6", "黄泉路陆层（M21-6）", "m18", "huangquan_7", "第17章·熔岩地狱火鬼殿", 8},
+        {"m18", "huangquan_7", "黄泉路柒层（M21-7）", "m18", "huangquan_8", "第17章·熔岩地狱火鬼殿", 7},
+        {"m18", "huangquan_8", "黄泉路捌层（M21-8）", "m18", "huangquan_9", "第17章·熔岩地狱火鬼殿", 6},
+        {"m18", "huangquan_9", "黄泉路玖层（M21-9）", "m18", "rongyan_1", "第17章·熔岩地狱火鬼殿", 5},
+        {"m18", "rongyan_1", "熔岩地狱壹层（M20-1）", "m18", "rongyan_2", "第17章·熔岩地狱火鬼殿", 4},
+        {"m18", "rongyan_2", "熔岩地狱贰层（M20-2）", "m18", "rongyan_3", "第17章·熔岩地狱火鬼殿", 3},
+        {"m18", "rongyan_3", "熔岩地狱叁层（M20-3）", "m18", "rongyan_4", "第17章·熔岩地狱火鬼殿", 2},
+        {"m18", "rongyan_4", "熔岩地狱肆层（M20-4）", "m18", "rongyan", "第17章·熔岩地狱火鬼殿", 1},
+
+        // 14a. M17 锁妖塔拾层~柒层 (m18/rongyan -> m18/suoyaota_upper)
+        {"m18", "suoyaota_10", "蜀山锁妖塔拾层（M17-1）", "m18", "suoyaota_9", "第18章上·锁妖塔陆层浮桥机关层", 4},
+        {"m18", "suoyaota_9", "蜀山锁妖塔玖层（M17-2）", "m18", "suoyaota_8", "第18章上·锁妖塔陆层浮桥机关层", 3},
+        {"m18", "suoyaota_8", "蜀山锁妖塔捌层（M17-3）", "m18", "suoyaota_7", "第18章上·锁妖塔陆层浮桥机关层", 2},
+        {"m18", "suoyaota_7", "蜀山锁妖塔柒层（M17-4）", "m18", "suoyaota_upper", "第18章上·锁妖塔陆层浮桥机关层", 1},
+
+        // 14b. M17 锁妖塔伍层~肆层 (m18/suoyaota_upper -> m18/suoyaota_mid)
+        {"m18", "suoyaota_5", "蜀山锁妖塔伍层（M17-6）", "m18", "suoyaota_4", "第18章中·锁妖塔叁层冰晶女五灵阵", 2},
+        {"m18", "suoyaota_4", "蜀山锁妖塔肆层（M17-7）", "m18", "suoyaota_mid", "第18章中·锁妖塔叁层冰晶女五灵阵", 1},
+
+        // 14c. M17 锁妖塔贰层 (m18/suoyaota_mid -> m18/m18)
+        {"m18", "suoyaota_2", "蜀山锁妖塔贰层（M17-9）", "m18", "m18", "第18章下·锁妖塔壹层底坛", 1},
+
+        // 15. M18 草海 2 层 + M19 灵山仙人洞 4 层 + Q12 古城镇 + Q16 安溪 + M23 海底城前 4 层 (q03/manzhou -> m18/haidicheng)
+        {"q03", "caohai_1", "草海毒瘴外围（M18-1）", "q03", "caohai_2", "第21章·海底城伍层", 12},
+        {"q03", "caohai_2", "草海虫洞深处（M18-2）", "q03", "lingshan_1", "第21章·海底城伍层", 11},
+        {"q03", "lingshan_1", "灵山仙人洞壹层（M19-1）", "q03", "lingshan_2", "第21章·海底城伍层", 10},
+        {"q03", "lingshan_2", "灵山仙人洞贰层（M19-2）", "q03", "lingshan_3", "第21章·海底城伍层", 9},
+        {"q03", "lingshan_3", "灵山仙人洞叁层（M19-3）", "q03", "lingshan_4", "第21章·海底城伍层", 8},
+        {"q03", "lingshan_4", "灵山水幕厅（M19-4）", "q03", "gucheng", "第21章·海底城伍层", 7},
+        {"q03", "gucheng", "回魂仙梦·古城镇（Q12）", "m18", "anxi", "第21章·海底城伍层", 6},
+        {"m18", "anxi", "安溪海滨古镇（Q16）", "m18", "haidicheng_1", "第21章·海底城伍层", 5},
+        {"m18", "haidicheng_1", "东海海底城壹层（M23-1）", "m18", "haidicheng_2", "第21章·海底城伍层", 4},
+        {"m18", "haidicheng_2", "东海海底城贰层（M23-2）", "m18", "haidicheng_3", "第21章·海底城伍层", 3},
+        {"m18", "haidicheng_3", "东海海底城叁层（M23-3）", "m18", "haidicheng_4", "第21章·海底城伍层", 2},
+        {"m18", "haidicheng_4", "东海海底城肆层（M23-4）", "m18", "haidicheng", "第21章·海底城伍层", 1},
+
+        // 16. Q15 雪岭镇 + M22 冰风谷前 5 区 (m18/haidicheng -> m23/bingfeng)
+        {"m23", "xueling", "雪岭镇（Q15）", "m23", "bingfeng_1", "第22章·冰风谷雪道", 6},
+        {"m23", "bingfeng_1", "冰风谷入口（M22-5）", "m23", "bingfeng_2", "第22章·冰风谷雪道", 5},
+        {"m23", "bingfeng_2", "冰风谷西部（M22-4）", "m23", "bingfeng_3", "第22章·冰风谷雪道", 4},
+        {"m23", "bingfeng_3", "冰风谷东部（M22-3）", "m23", "bingfeng_4", "第22章·冰风谷雪道", 3},
+        {"m23", "bingfeng_4", "冰风谷断崖（M22-2）", "m23", "bingfeng_5", "第22章·冰风谷雪道", 2},
+        {"m23", "bingfeng_5", "冰风谷深谷（M22-6）", "m23", "bingfeng", "第22章·冰风谷雪道", 1},
+
+        // 17. M24 剑冢上层贰~肆 (m23/jianzhong_outer -> m23/jianzhong_hall)
+        {"m23", "jianzhong_2", "雷州剑冢上层贰（M24-2）", "m23", "jianzhong_3", "第23章中·剑冢下层西龙脉阵", 3},
+        {"m23", "jianzhong_3", "雷州剑冢上层叁（M24-3）", "m23", "jianzhong_4", "第23章中·剑冢下层西龙脉阵", 2},
+        {"m23", "jianzhong_4", "雷州剑冢上层肆（M24-4）", "m23", "jianzhong_hall", "第23章中·剑冢下层西龙脉阵", 1},
+
+        // 18. M26 星森隐藏迷宫 + M25 新仙界壹~贰层 (m23/m23 -> m23/xinxianjie)
+        {"m23", "xingsen", "星森·软星开发室秘境（M26-1）", "m23", "xinxianjie_1", "第24章·新仙界顶层重楼决战", 3},
+        {"m23", "xinxianjie_1", "新仙界壹层（M25-1）", "m23", "xinxianjie_2", "第24章·新仙界顶层重楼决战", 2},
+        {"m23", "xinxianjie_2", "新仙界贰层（M25-2）", "m23", "xinxianjie", "第24章·新仙界顶层重楼决战", 1},
+    };
+
+    const auto shared_nav = BuildDualLayerNavMesh(false);
+    const auto shared_cvd = BuildMechanismCvdModel("transit_portal");
+
+    for (const auto& sp : kComplete116TransitSpecs) {
+        ScnNode portal{};
+        portal.index = 99;
+        portal.active = 1;
+        portal.name = "auto_step_portal_to_" + std::string(sp.next_scn);
+        portal.node_type = static_cast<std::uint16_t>(ScnNodeType::tile_trigger);
+        portal.position = {0.0f, 0.0f, 42.0f};
+        portal.nav_layer = 0;
+        portal.nav_trigger_coord_min = {14, 21};
+        portal.nav_trigger_coord_max = {18, 25};
+        portal.sce_proc_id = 599;
+
+        ScnFile scn{};
+        scn.cpk_name = std::string(sp.cpk_id);
+        scn.scn_name = std::string(sp.scn_id);
+        scn.scn_base_name = std::string(sp.cpk_id);
+        scn.nodes.push_back(portal);
+
+        SceFile sce{};
+        {
+            SceAssembler a;
+            a.EmitDlg("景天：已进入【" + std::string(sp.title) + "】（前方尚有 " +
+                      std::to_string(sp.remaining_steps) +
+                      " 层连续迷宫通道，直接 move_to (0, 42) 即可自动跨层前往【" +
+                      std::string(sp.final_dest_title) + "】，无需 interact）。");
+            sce.procs[1] = a.BuildProc(1, "init_transit");
+        }
+        {
+            SceAssembler a;
+            a.EmitLoadScene(sp.next_cpk, sp.next_scn);
+            sce.procs[599] = a.BuildProc(599, "step_to_next_floor");
+        }
+
+        LoadedSceneBundle bundle;
+        bundle.title = std::string(sp.title);
+        bundle.init_proc_id = 1;
+        bundle.scn = std::move(scn);
+        bundle.sce = std::move(sce);
+        bundle.nav = shared_nav;
+        bundle.pol = BuildStagePolModel(std::string(sp.cpk_id) + "_" + std::string(sp.scn_id));
+        bundle.cvd = shared_cvd;
+        scene_catalog[std::string(sp.cpk_id) + "/" + std::string(sp.scn_id)] = std::move(bundle);
+    }
 }
 
 bool ChapterHost::MountOriginalGameDirectory(const std::filesystem::path& game_dir) {
@@ -1189,26 +1690,173 @@ void ChapterHost::EnsureRealSceneAssetsLoaded(const std::string& key) {
         {"m01/m10", "m10.cpk", "1/1.pol", ""},
         {"q03/q03", "Q03.cpk", "q03/q03.pol", "q03/_01.cvd"},
         {"q03/anning", "Q06.cpk", "q06/q06.pol", ""},
-        {"q03/guteng", "M09.cpk", "1/1.pol", ""},
+        {"q03/guteng_1", "M09.cpk", "1/1.pol", ""},
+        {"q03/guteng_2", "M09.cpk", "2/2.pol", ""},
+        {"q03/guteng", "M09.cpk", "3/3.pol", ""},
         {"q03/shushan", "Q08.cpk", "q08/q08.pol", ""},
         {"q03/manzhou", "Q13.cpk", "q13/q13.pol", ""},
+        {"m18/shenmo_a", "M15.cpk", "2/2.pol", ""},
+        {"m18/shenmo_a1", "M15.cpk", "3/3.pol", ""},
         {"m18/shenmo", "m11.cpk", "1/1.pol", ""},
         {"m18/shenjie", "Q10.cpk", "q10/q10.pol", ""},
         {"m18/guijie", "Q11.cpk", "q11/q11.pol", ""},
         {"m18/rongyan", "M16.cpk", "1/1.pol", ""},
+        {"m18/suoyaota_upper", "M17.cpk", "5/5.pol", ""},
+        {"m18/suoyaota_mid", "M17.cpk", "8/8.pol", ""},
         {"m18/m18", "M18.cpk", "1/1.pol", ""},
         {"m18/haidicheng", "M21.cpk", "1/1.pol", ""},
         {"m23/bingfeng", "M22.cpk", "1/1.pol", ""},
         {"m23/jianzhong_outer", "M22.cpk", "2/2.pol", ""},
-        {"m23/m23", "M23.cpk", "1/1.pol", ""},
+        {"m23/jianzhong_hall", "M24.cpk", "5/5.pol", ""},
+        {"m23/m23", "M23.cpk", "2/2.pol", ""},
         {"m23/xinxianjie", "M24.cpk", "1/1.pol", ""},
     };
 
+    static constexpr RealSceneMapping kComplete116SceneMap[] = {
+        // 17 Retail Towns (Q01..Q17)
+        {"q01/yn01a", "Q01.cpk", "b/b.pol", "yn01/_01.cvd"},
+        {"q01/binhua", "Q02.cpk", "q02/q02.pol", ""},
+        {"q03/zhenjiang", "Q03.cpk", "q03/q03.pol", ""},
+        {"q03/q03", "Q04.cpk", "q04/q04.pol", ""},
+        {"q01/tangjiabao", "Q05.cpk", "q05/q05.pol", ""},
+        {"q03/deyang", "Q06.cpk", "q06/q06.pol", ""},
+        {"q03/anning", "Q07.cpk", "q07/q07.pol", ""},
+        {"q03/shushan", "Q08.cpk", "q08/q08.pol", ""},
+        {"q01/leizhou", "Q09.cpk", "c/c.pol", ""},
+        {"m18/shenjie", "Q10.cpk", "q10/q10.pol", ""},
+        {"q03/manzhou", "Q11.cpk", "q11/q11.pol", ""},
+        {"q03/gucheng", "Q12.cpk", "q12/q12.pol", ""},
+        {"m18/fengdu", "Q13.cpk", "q13/q13.pol", ""},
+        {"m18/guijie", "Q14.cpk", "q14/q14.pol", ""},
+        {"m23/xueling", "Q15.cpk", "q15/q15.pol", ""},
+        {"m18/anxi", "Q16.cpk", "q16/q16.pol", ""},
+        {"q01/q17_ship", "Q17.cpk", "q17/q17.pol", ""},
+
+        // 22 Retail Dungeons (M01..M26, 99 sub-scenes)
+        {"m01/m01", "M01.cpk", "1/1.pol", "1/1.cvd"},
+        {"m01/m01_2", "M01.cpk", "2/2.pol", ""},
+        {"m01/m01_3", "M01.cpk", "3/3.pol", ""},
+        {"m01/m02", "M02.cpk", "1/1.pol", ""},
+        {"m01/m02_2", "M02.cpk", "2/2.pol", ""},
+        {"m01/m02_3", "M02.cpk", "3/3.pol", ""},
+        {"m01/m02_4", "M02.cpk", "4/4.pol", ""},
+        {"m01/m03", "M03.cpk", "1/1.pol", ""},
+        {"m01/m04_1", "M04.cpk", "1/1.pol", ""},
+        {"m01/m04_2", "M04.cpk", "2/2.pol", ""},
+        {"m01/m05_1", "M05.cpk", "1/1.pol", ""},
+        {"m01/m05_2", "M05.cpk", "2/2.pol", ""},
+        {"m01/m05_3", "M05.cpk", "3/3.pol", ""},
+        {"m01/penglai_1", "M06.cpk", "1/1.pol", ""},
+        {"m01/penglai_2", "M06.cpk", "2/2.pol", ""},
+        {"m01/penglai_3", "M06.cpk", "3/3.pol", ""},
+        {"m01/penglai_4", "M06.cpk", "4/4.pol", ""},
+        {"m01/jiuding_1a", "m08.cpk", "1a/1a.pol", ""},
+        {"m01/jiuding_1b", "m08.cpk", "1b/1b.pol", ""},
+        {"m01/jiuding_2", "m08.cpk", "2/2.pol", ""},
+        {"m01/jiuding_3", "m08.cpk", "3/3.pol", ""},
+        {"m01/m10", "m08.cpk", "4/4.pol", ""},
+        {"m01/pilittang_1", "M09.cpk", "1/1.pol", ""},
+        {"m01/pilittang_2", "M09.cpk", "2/2.pol", ""},
+        {"m01/m06", "M09.cpk", "3/3.pol", ""},
+        {"q03/guteng_1", "m10.cpk", "1/1.pol", ""},
+        {"q03/guteng_2", "m10.cpk", "2/2.pol", ""},
+        {"q03/guteng_3", "m10.cpk", "3/3.pol", ""},
+        {"q03/guteng_4", "m10.cpk", "4/4.pol", ""},
+        {"q03/guteng", "m10.cpk", "5/5.pol", ""},
+        {"q03/gudao_1", "m11.cpk", "1/1.pol", ""},
+        {"q03/gudao_2", "m11.cpk", "2/2.pol", ""},
+        {"m18/shenmo_a", "M15.cpk", "2/2.pol", ""},
+        {"m18/shenmo_a1", "M15.cpk", "3/3.pol", ""},
+        {"m18/shenmo_jia", "M15.cpk", "a/a.pol", ""},
+        {"m18/shenmo_yi", "M15.cpk", "a1/a1.pol", ""},
+        {"m18/shenmo_bing", "M15.cpk", "b/b.pol", ""},
+        {"m18/shenmo_ding", "M15.cpk", "b1/b1.pol", ""},
+        {"m18/shenmo_wu", "M15.cpk", "c/c.pol", ""},
+        {"m18/shenmo_ji", "M15.cpk", "c1/c1.pol", ""},
+        {"m18/shenmo_geng", "M15.cpk", "d/d.pol", ""},
+        {"m18/shenmo", "M15.cpk", "d1/d1.pol", ""},
+        {"m18/shenshu_1", "M16.cpk", "1/1.pol", ""},
+        {"m18/shenshu_2", "M16.cpk", "2/2.pol", ""},
+        {"m18/shenshu_3", "M16.cpk", "3/3.pol", ""},
+        {"m18/shenshu_4", "M16.cpk", "4/4.pol", ""},
+        {"m18/shenshu_5", "M16.cpk", "5/5.pol", ""},
+        {"m18/shenshu_6", "M16.cpk", "6/6.pol", ""},
+        {"m18/suoyaota_10", "M17.cpk", "1/1.pol", ""},
+        {"m18/suoyaota_9", "M17.cpk", "2/2.pol", ""},
+        {"m18/suoyaota_8", "M17.cpk", "3/3.pol", ""},
+        {"m18/suoyaota_7", "M17.cpk", "4/4.pol", ""},
+        {"m18/suoyaota_upper", "M17.cpk", "5/5.pol", ""},
+        {"m18/suoyaota_5", "M17.cpk", "6/6.pol", ""},
+        {"m18/suoyaota_4", "M17.cpk", "7/7.pol", ""},
+        {"m18/suoyaota_mid", "M17.cpk", "8/8.pol", ""},
+        {"m18/suoyaota_2", "M17.cpk", "9/9.pol", ""},
+        {"m18/m18", "M17.cpk", "10/10.pol", ""},
+        {"q03/caohai_1", "M18.cpk", "1/1.pol", ""},
+        {"q03/caohai_2", "M18.cpk", "2/2.pol", ""},
+        {"q03/lingshan_1", "M19.cpk", "1/1.pol", ""},
+        {"q03/lingshan_2", "M19.cpk", "2/2.pol", ""},
+        {"q03/lingshan_3", "M19.cpk", "3/3.pol", ""},
+        {"q03/lingshan_4", "M19.cpk", "4/4.pol", ""},
+        {"m18/rongyan_1", "M20.cpk", "1/1.pol", ""},
+        {"m18/rongyan_2", "M20.cpk", "2/2.pol", ""},
+        {"m18/rongyan_3", "M20.cpk", "3/3.pol", ""},
+        {"m18/rongyan_4", "M20.cpk", "4/4.pol", ""},
+        {"m18/rongyan", "M20.cpk", "5/5.pol", ""},
+        {"m18/huangquan_1", "M21.cpk", "1/1.pol", ""},
+        {"m18/huangquan_2", "M21.cpk", "2/2.pol", ""},
+        {"m18/huangquan_3", "M21.cpk", "3/3.pol", ""},
+        {"m18/huangquan_4", "M21.cpk", "4/4.pol", ""},
+        {"m18/huangquan_5", "M21.cpk", "5/5.pol", ""},
+        {"m18/huangquan_6", "M21.cpk", "6/6.pol", ""},
+        {"m18/huangquan_7", "M21.cpk", "7/7.pol", ""},
+        {"m18/huangquan_8", "M21.cpk", "8/8.pol", ""},
+        {"m18/huangquan_9", "M21.cpk", "9/9.pol", ""},
+        {"m23/bingfeng_1", "M22.cpk", "5/5.pol", ""},
+        {"m23/bingfeng_2", "M22.cpk", "4/4.pol", ""},
+        {"m23/bingfeng_3", "M22.cpk", "3/3.pol", ""},
+        {"m23/bingfeng_4", "M22.cpk", "2/2.pol", ""},
+        {"m23/bingfeng_5", "M22.cpk", "6/6.pol", ""},
+        {"m23/bingfeng", "M22.cpk", "1/1.pol", ""},
+        {"m18/haidicheng_1", "M23.cpk", "1/1.pol", ""},
+        {"m18/haidicheng_2", "M23.cpk", "2/2.pol", ""},
+        {"m18/haidicheng_3", "M23.cpk", "3/3.pol", ""},
+        {"m18/haidicheng_4", "M23.cpk", "4/4.pol", ""},
+        {"m18/haidicheng", "M23.cpk", "5/5.pol", ""},
+        {"m23/jianzhong_outer", "M24.cpk", "1/1.pol", ""},
+        {"m23/jianzhong_2", "M24.cpk", "2/2.pol", ""},
+        {"m23/jianzhong_3", "M24.cpk", "3/3.pol", ""},
+        {"m23/jianzhong_4", "M24.cpk", "4/4.pol", ""},
+        {"m23/jianzhong_hall", "M24.cpk", "5/5.pol", ""},
+        {"m23/m23", "M24.cpk", "6/6.pol", ""},
+        {"m23/xinxianjie_1", "M25.cpk", "1/1.pol", ""},
+        {"m23/xinxianjie_2", "M25.cpk", "2/2.pol", ""},
+        {"m23/xinxianjie", "M25.cpk", "4/4.pol", ""},
+        {"m23/xingsen", "M26.cpk", "1/1.pol", ""},
+    };
+
     const RealSceneMapping* matched = nullptr;
-    for (const auto& m : kRealSceneMap) {
-        if (m.key == key) {
-            matched = &m;
-            break;
+    if (complete_116_campaign) {
+        for (const auto& m : kComplete116SceneMap) {
+            if (m.key == key) {
+                matched = &m;
+                break;
+            }
+        }
+    }
+    if (!matched) {
+        for (const auto& m : kRealSceneMap) {
+            if (m.key == key) {
+                matched = &m;
+                break;
+            }
+        }
+    }
+    if (!matched) {
+        for (const auto& m : kComplete116SceneMap) {
+            if (m.key == key) {
+                matched = &m;
+                break;
+            }
         }
     }
     if (!matched) return;
@@ -1343,6 +1991,9 @@ void ChapterHost::BeginNewGame() {
     game_cleared = false;
     ending_name.clear();
     played_movies.clear();
+    for (std::int16_t v = -1006; v <= -1001; ++v) {
+        sce_vm->SetVar(v, 0);
+    }
 
     SceLoadScene("q01", "yn01a");
     RenderFrameToGles();
@@ -1566,9 +2217,11 @@ std::string ChapterHost::Interact(std::string_view target_kind, std::int32_t tar
         if (dist <= max_interact_dist || (!enforce_full_campaign && target_id == obj.id)) {
             const std::uint32_t next_layer =
                 static_cast<std::uint32_t>((static_cast<int>(leader_nav_layer) + obj.ladder_switch_layer) & 1);
+            const auto& exit_coord =
+                (multi_scn_dungeon && next_layer == 0u) ? obj.ladder_coord1 : obj.ladder_coord2;
             RebuildCollisionAndSceneForLayer(next_layer);
             const auto exit_world = NavTileToWorld(
-                active_nav.layers[leader_nav_layer], obj.ladder_coord2[0], obj.ladder_coord2[1]);
+                active_nav.layers[leader_nav_layer], exit_coord[0], exit_coord[1]);
             movement_state.position = {exit_world[0], exit_world[1], exit_world[2]};
             RenderFrameToGles();
             return "ladder_traversed";
@@ -1689,6 +2342,50 @@ std::string ChapterHost::Interact(std::string_view target_kind, std::int32_t tar
                 SceShowDialog("紫萱：邪剑仙妖气太盛，必须先在铸剑炉（sword_tomb_furnace）重铸【圣灵魔剑】或【圣灵镇妖剑】方可迎战！");
                 return "prerequisite_not_met:forge_divine_sword_at_furnace_first";
             }
+        }
+    }
+
+    // Multi-SCN Dungeon Mode mechanism & puzzle gates
+    if (current_cpk == "q03" && current_scn == "guteng_1" && best_proc == 723u) {
+        if (sce_vm->GetVar(-1001) < 1) {
+            dialog.recent_history.clear();
+            SceShowDialog("花楹：风向不对！直接进传送阵会被逆风吹回来，先去左侧开启【southwest_wind_stele (id=61)】校准风向吧！");
+            return "prerequisite_not_met:align_southwest_wind_stele_first";
+        }
+    }
+    if (current_cpk == "q03" && current_scn == "guteng_2" && best_proc == 725u) {
+        if (sce_vm->GetVar(-1002) < 1) {
+            dialog.recent_history.clear();
+            SceShowDialog("景天：古藤灵障缠绕得死死的，得先和【古藤林·猴妖精精 (id=64)】切磋让它帮忙解开藤蔓！");
+            return "prerequisite_not_met:defeat_jingjing_to_unseal_vine_barrier_first";
+        }
+    }
+    if (current_cpk == "m18" && current_scn == "shenmo_a" && best_proc == 822u) {
+        if (sce_vm->GetVar(-1003) < 1) {
+            dialog.recent_history.clear();
+            SceShowDialog("紫萱：太极封印门紧闭！正面无法强行开启，必须先由左侧【yinyang_flip_portal_to_reverse (id=71)】翻转至神魔之井反面，扳动反面太极机关枢！");
+            return "prerequisite_not_met:flip_to_reverse_side_shenmo_a1_and_unlock_taiji_seal_first";
+        }
+    }
+    if (current_cpk == "m18" && current_scn == "suoyaota_upper" && best_proc == 826u) {
+        if (sce_vm->GetVar(-1004) < 1) {
+            dialog.recent_history.clear();
+            SceShowDialog("景天：前面断崖悬空，得先去左侧开启【floating_bridge_switch (id=81)】把悬空浮板拼接起来！");
+            return "prerequisite_not_met:activate_floating_bridge_switch_first";
+        }
+    }
+    if (current_cpk == "m18" && current_scn == "suoyaota_mid" && best_proc == 828u) {
+        if (sce_vm->GetVar(-1005) < 1) {
+            dialog.recent_history.clear();
+            SceShowDialog("徐长卿：五灵镇狱阵被冰晶女的寒气冻结，先去与【锁妖塔·冰晶女 (id=83)】对话化解她的执念吧！");
+            return "prerequisite_not_met:speak_with_bingjingnv_to_unseal_array_first";
+        }
+    }
+    if (current_cpk == "m23" && current_scn == "jianzhong_hall" && best_proc == 922u) {
+        if (sce_vm->GetVar(-1006) < 1) {
+            dialog.recent_history.clear();
+            SceShowDialog("景天：熔岩吊桥还悬在岩浆上方！得先上二层（layer 1）开启【dragon_vein_switch_upper (id=91)】古剑龙脉机关枢，再回一层通过吊桥大门！");
+            return "prerequisite_not_met:climb_to_layer_1_and_activate_dragon_vein_switch_91_first";
         }
     }
 
@@ -2352,8 +3049,69 @@ void ChapterHost::ScePlayMusic(std::string_view bgm_name, std::int32_t /*loop*/)
 }
 
 void ChapterHost::SceLoadScene(std::string_view cpk_name, std::string_view scn_name) {
-    const std::string lower_cpk = ToLowerAscii(cpk_name);
-    const std::string lower_scn = ToLowerAscii(scn_name);
+    std::string lower_cpk = ToLowerAscii(cpk_name);
+    std::string lower_scn = ToLowerAscii(scn_name);
+
+    if (complete_116_campaign) {
+        struct ChainRedirect {
+            std::string_view from_cpk;
+            std::string_view from_scn;
+            std::string_view to_cpk;
+            std::string_view to_scn;
+            std::string_view redirect_cpk;
+            std::string_view redirect_scn;
+        };
+        static constexpr ChainRedirect kComplete116Redirects[] = {
+            {"m01", "m01", "m01", "m02", "m01", "m01_2"},
+            {"m01", "m02", "m01", "m03", "m01", "m02_2"},
+            {"m01", "m03", "q01", "binhua", "m01", "m04_1"},
+            {"q01", "binhua", "q03", "q03", "q01", "q17_ship"},
+            {"q03", "q03", "q01", "tangjiabao", "q03", "zhenjiang"},
+            {"q01", "tangjiabao", "m01", "m06", "q03", "deyang"},
+            {"q03", "anning", "q03", "guteng", "q03", "guteng_1"},
+            {"q03", "guteng_2", "q03", "guteng", "q03", "guteng_3"},
+            {"q03", "guteng", "q03", "shushan", "q03", "gudao_1"},
+            {"q03", "shushan", "m01", "m10", "m01", "jiuding_1a"},
+            {"q01", "leizhou", "m18", "shenmo", "m18", "shenmo_a"},
+            {"m18", "shenmo_a", "m18", "shenmo", "m18", "shenmo_jia"},
+            {"m18", "shenmo", "m18", "shenjie", "m18", "shenshu_1"},
+            {"m18", "shenjie", "m18", "guijie", "m18", "fengdu"},
+            {"m18", "guijie", "m18", "rongyan", "m18", "huangquan_1"},
+            {"m18", "rongyan", "m18", "m18", "m18", "suoyaota_10"},
+            {"m18", "suoyaota_upper", "m18", "suoyaota_mid", "m18", "suoyaota_5"},
+            {"m18", "suoyaota_mid", "m18", "m18", "m18", "suoyaota_2"},
+            {"q03", "manzhou", "m18", "haidicheng", "q03", "caohai_1"},
+            {"m18", "haidicheng", "m23", "bingfeng", "m23", "xueling"},
+            {"m23", "jianzhong_outer", "m23", "m23", "m23", "jianzhong_2"},
+            {"m23", "m23", "m23", "xinxianjie", "m23", "xingsen"},
+        };
+        bool redirected = false;
+        for (const auto& r : kComplete116Redirects) {
+            if (current_cpk == r.from_cpk && current_scn == r.from_scn &&
+                lower_cpk == r.to_cpk && lower_scn == r.to_scn) {
+                lower_cpk = std::string(r.redirect_cpk);
+                lower_scn = std::string(r.redirect_scn);
+                redirected = true;
+                break;
+            }
+        }
+        (void)redirected;
+    } else if (multi_scn_dungeon) {
+        if (current_cpk == "q03" && current_scn == "anning" &&
+            lower_cpk == "q03" && lower_scn == "guteng") {
+            lower_scn = "guteng_1";
+        } else if (current_cpk == "q01" && current_scn == "leizhou" &&
+                   lower_cpk == "m18" && lower_scn == "shenmo") {
+            lower_scn = "shenmo_a";
+        } else if (current_cpk == "m18" && current_scn == "rongyan" &&
+                   lower_cpk == "m18" && lower_scn == "m18") {
+            lower_scn = "suoyaota_upper";
+        } else if (current_cpk == "m23" && current_scn == "jianzhong_outer" &&
+                   lower_cpk == "m23" && lower_scn == "m23") {
+            lower_scn = "jianzhong_hall";
+        }
+    }
+
     const std::string key = lower_cpk + "/" + lower_scn;
     auto it = scene_catalog.find(key);
     if (it == scene_catalog.end()) {
@@ -2426,6 +3184,10 @@ void ChapterHost::SceLoadScene(std::string_view cpk_name, std::string_view scn_n
     sce_vm->SetSceneScript(lower_cpk, lower_scn, it->second.sce);
     sce_vm->CallProc(it->second.init_proc_id);
     sce_vm->Step(1.0f / 60.0f, true);
+    if (lower_cpk == "m18" && lower_scn == "shenmo_a" && sce_vm->GetVar(-1003) >= 1) {
+        dialog.recent_history.clear();
+        SceShowDialog("紫萱：反面太极机关枢已开启！现在直接前往右侧【taiji_seal_gate_to_shenmo_core (id=72)】即可进入神魔之井核心！");
+    }
 }
 
 void ChapterHost::SceObjectActive(std::int32_t obj_id, bool active) {

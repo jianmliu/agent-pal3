@@ -48,10 +48,18 @@ export function makeSceneKey(st) {
 }
 
 class HostProcess {
-  constructor(mode = 'pure', fullCampaign = true, gameDir = GAME_DIR) {
+  constructor(
+    mode = 'pure',
+    fullCampaign = true,
+    gameDir = GAME_DIR,
+    multiScnDungeon = false,
+    complete116Campaign = false
+  ) {
     const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pal3-render-work-'));
     const args = ['--work-dir', workDir, '--mode', mode];
     if (fullCampaign) args.push('--full-campaign');
+    if (multiScnDungeon) args.push('--multi-scn-dungeon');
+    if (complete116Campaign) args.push('--complete-116');
     if (gameDir && fs.existsSync(gameDir)) {
       args.push('--game-dir', gameDir);
     }
@@ -176,9 +184,29 @@ async function main() {
       : {};
     const mode = result.mode || log.start?.mode || 'pure';
     const fullCampaign = Boolean(result.fullCampaign ?? log.start?.fullCampaign ?? true);
+    const multiScnDungeon = Boolean(
+      result.multiScnDungeon ??
+        result.gles3?.multi_scn_dungeon ??
+        log.start?.initial?.gles3?.multi_scn_dungeon ??
+        false
+    );
+    const complete116Campaign = Boolean(
+      result.complete116Campaign ??
+        result.gles3?.complete_116_campaign ??
+        log.start?.initial?.gles3?.complete_116_campaign ??
+        false
+    );
 
-    console.log(`[render-frames] Replaying ${runId} (mode=${mode}, steps=${log.calls.length})...`);
-    const host = new HostProcess(mode, fullCampaign, GAME_DIR);
+    console.log(
+      `[render-frames] Replaying ${runId} (mode=${mode}, multiScn=${multiScnDungeon}, complete116=${complete116Campaign}, steps=${log.calls.length})...`
+    );
+    const host = new HostProcess(
+      mode,
+      fullCampaign,
+      GAME_DIR,
+      multiScnDungeon,
+      complete116Campaign
+    );
     try {
       let prevSt = await host.send('observe');
       await captureIfNeeded(host, prevSt);

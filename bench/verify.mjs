@@ -18,10 +18,17 @@ const HOST_BIN =
 const OUT_ROOT = path.resolve(__dirname, 'out');
 
 class HostProcess {
-  constructor(mode = 'normal', fullCampaign = true) {
+  constructor(
+    mode = 'normal',
+    fullCampaign = true,
+    multiScnDungeon = false,
+    complete116Campaign = false
+  ) {
     const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pal3-verify-'));
     const args = ['--work-dir', workDir, '--mode', mode];
     if (fullCampaign) args.push('--full-campaign');
+    if (multiScnDungeon) args.push('--multi-scn-dungeon');
+    if (complete116Campaign) args.push('--complete-116');
     this.proc = spawn(HOST_BIN, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -97,7 +104,19 @@ export async function verifyRunDir(runDir) {
   const log = readEpisodeLog(logPath);
   const mode = result.mode || log.start?.mode || 'normal';
   const fullCampaign = Boolean(result.fullCampaign ?? log.start?.fullCampaign ?? true);
-  const host = new HostProcess(mode, fullCampaign);
+  const multiScnDungeon = Boolean(
+    result.multiScnDungeon ??
+      result.gles3?.multi_scn_dungeon ??
+      log.start?.initial?.gles3?.multi_scn_dungeon ??
+      false
+  );
+  const complete116Campaign = Boolean(
+    result.complete116Campaign ??
+      result.gles3?.complete_116_campaign ??
+      log.start?.initial?.gles3?.complete_116_campaign ??
+      false
+  );
+  const host = new HostProcess(mode, fullCampaign, multiScnDungeon, complete116Campaign);
   const diffs = [];
   const visitedScenes = new Set();
 
@@ -188,18 +207,20 @@ export async function verifyRunDir(runDir) {
     }
 
     const optimizationWarnings = [];
+    const maxAllowedCallsPerTurn = complete116Campaign ? 3.5 : 2.5;
+    const expectedSceneTarget = complete116Campaign ? 116 : multiScnDungeon ? 31 : 24;
     if (mode === 'pure') {
       if (usedExternalScript) {
         optimizationWarnings.push('external_driver_script_detected');
       }
-      if (callsPerTurn > 2.5) {
+      if (callsPerTurn > maxAllowedCallsPerTurn) {
         optimizationWarnings.push(`excessive_turn_batching(${callsPerTurn}_calls_per_turn)`);
       }
       if (moveToCalls === 0 && log.calls.length > 10) {
         optimizationWarnings.push('zero_move_to_navigation');
       }
-      if (visitedScenes.size < 24) {
-        optimizationWarnings.push(`incomplete_24_chapters(${visitedScenes.size}/24)`);
+      if (visitedScenes.size < expectedSceneTarget) {
+        optimizationWarnings.push(`incomplete_scenes(${visitedScenes.size}/${expectedSceneTarget})`);
       }
       if ((lastState.demon_sword?.infused_elements?.length ?? 0) < 5) {
         optimizationWarnings.push('incomplete_five_spirit_pearls');
@@ -213,6 +234,9 @@ export async function verifyRunDir(runDir) {
       model: result.model,
       mode,
       fullCampaign,
+      multiScnDungeon,
+      complete116Campaign,
+      expectedSceneTarget,
       toolCalls: log.calls.length,
       agentTurns,
       callsPerTurn,
@@ -263,7 +287,7 @@ async function main() {
     if (v.ok) {
       passed++;
       console.log(
-        `[VERIFIED ✓] ${v.runId} | model=${v.model} | mode=${v.mode} | steps=${v.toolCalls} | scenes=${v.scenesVisited}/24 | sword=${v.divineSword}(Lv.${v.purificationLevel}) | ending=${v.endingName} | warnings=${v.optimizationWarnings.length} | sha256=${v.episodeDigest.slice(0, 12)}`
+        `[VERIFIED ✓] ${v.runId} | model=${v.model} | mode=${v.mode} | steps=${v.toolCalls} | scenes=${v.scenesVisited}/${v.expectedSceneTarget} | sword=${v.divineSword}(Lv.${v.purificationLevel}) | ending=${v.endingName} | warnings=${v.optimizationWarnings.length} | sha256=${v.episodeDigest.slice(0, 12)}`
       );
     } else {
       failed++;

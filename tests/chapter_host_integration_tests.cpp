@@ -30,7 +30,40 @@ int main() {
     assert(host.current_scn == "yn01a");
     assert(host.StoryProgress() == 10101);
     assert(host.total_draw_calls >= 2u);
-    assert(host.scene_catalog.size() == 24u);
+    assert(host.scene_catalog.size() == 116u);
+
+    // Verify Complete 116-Scene Campaign chain transitions (`m01/m01 -> m01_2 -> m01_3 -> m02`)
+    host.complete_116_campaign = true;
+    host.multi_scn_dungeon = true;
+    host.SceLoadScene("m01", "m01");
+    host.SceLoadScene("m01", "m02");
+    assert(host.current_scn == "m01_2");
+    assert(host.MoveLeaderTo(0.0f, 42.0f, 0u) == "scene_transitioned");
+    assert(host.current_scn == "m01_3");
+    assert(host.MoveLeaderTo(0.0f, 42.0f, 0u) == "scene_transitioned");
+    assert(host.current_scn == "m02");
+    host.complete_116_campaign = false;
+
+    // Verify Multi-SCN Dungeon Mode (`multi_scn_dungeon`) positive/reverse flipping in Shenmo Well
+    host.multi_scn_dungeon = true;
+    host.SceLoadScene("q01", "leizhou");
+    host.SceLoadScene("m18", "shenmo");
+    assert(host.current_scn == "shenmo_a");
+    host.MoveLeaderTo(25.0f, -30.0f, 0u);
+    assert(host.Interact("object", 72).find("prerequisite_not_met") == 0u);
+    host.MoveLeaderTo(-25.0f, 15.0f, 0u);
+    host.Interact("object", 71);
+    assert(host.current_scn == "shenmo_a1");
+    host.MoveLeaderTo(0.0f, -25.0f, 0u);
+    host.Interact("object", 73);
+    host.MoveLeaderTo(-25.0f, 15.0f, 0u);
+    host.Interact("object", 74);
+    assert(host.current_scn == "shenmo_a");
+    host.MoveLeaderTo(25.0f, -30.0f, 0u);
+    host.Interact("object", 72);
+    assert(host.current_scn == "shenmo");
+    host.multi_scn_dungeon = false;
+    host.BeginNewGame();
 
     // Cross-layer navigation to Zhao Wenchang on layer 1 + Antique Appraisal + SceProcHooks (10101 -> 10202)
     const auto move_res = host.MoveLeaderTo(40.0f, 40.0f, 1u);

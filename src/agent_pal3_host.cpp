@@ -352,6 +352,8 @@ struct AgentPal3Session {
             << "\"world_vertices\":" << host.displayed_world_scene.vertices.size() << ","
             << "\"mv3_models_loaded\":" << host.role_mv3_models.size() << ","
             << "\"original_cpk_mounted\":" << (!host.original_game_dir.empty() ? "true" : "false") << ","
+            << "\"multi_scn_dungeon\":" << (host.multi_scn_dungeon ? "true" : "false") << ","
+            << "\"complete_116_campaign\":" << (host.complete_116_campaign ? "true" : "false") << ","
             << "\"chapters_mounted\":" << host.scene_catalog.size() << "}"
             << "}";
         return out.str();
@@ -480,6 +482,25 @@ struct AgentPal3Session {
                 last_event = "story_var_set:" + std::to_string(val);
                 return BuildObservationJson(true);
             }
+            if (cmd == "set_multi_scn_dungeon") {
+                const bool en =
+                    line.find("\"enabled\":false") == std::string_view::npos &&
+                    line.find("\"enabled\": false") == std::string_view::npos &&
+                    ExtractJsonNumber(line, "enabled").value_or(1.0) != 0.0;
+                host.multi_scn_dungeon = en;
+                last_event = std::string("multi_scn_dungeon:") + (en ? "enabled" : "disabled");
+                return BuildObservationJson(true);
+            }
+            if (cmd == "set_complete_116") {
+                const bool en =
+                    line.find("\"enabled\":false") == std::string_view::npos &&
+                    line.find("\"enabled\": false") == std::string_view::npos &&
+                    ExtractJsonNumber(line, "enabled").value_or(1.0) != 0.0;
+                host.complete_116_campaign = en;
+                if (en) host.multi_scn_dungeon = true;
+                last_event = std::string("complete_116_campaign:") + (en ? "enabled" : "disabled");
+                return BuildObservationJson(true);
+            }
             if (cmd == "mount_game_dir") {
                 const std::string dir = ExtractJsonString(line, "path").value_or("");
                 const bool mounted = host.MountOriginalGameDirectory(dir);
@@ -549,6 +570,11 @@ int main(int argc, char** argv) {
             game_dir = argv[++i];
         } else if (arg == "--full-campaign") {
             session.host.enforce_full_campaign = true;
+        } else if (arg == "--multi-scn-dungeon") {
+            session.host.multi_scn_dungeon = true;
+        } else if (arg == "--complete-116") {
+            session.host.multi_scn_dungeon = true;
+            session.host.complete_116_campaign = true;
         }
     }
 

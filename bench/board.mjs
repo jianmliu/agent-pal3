@@ -110,6 +110,12 @@ function loadRuns() {
     });
   }
   return runs.sort((a, b) => {
+    const a116 = Boolean(a.result.complete116Campaign) ? 1 : 0;
+    const b116 = Boolean(b.result.complete116Campaign) ? 1 : 0;
+    if (a116 !== b116) return b116 - a116;
+    const aMulti = Boolean(a.result.multiScnDungeon) ? 1 : 0;
+    const bMulti = Boolean(b.result.multiScnDungeon) ? 1 : 0;
+    if (aMulti !== bMulti) return bMulti - aMulti;
     if (a.result.mode !== b.result.mode) return a.result.mode === 'pure' ? -1 : 1;
     return (a.result.toolCalls || 9999) - (b.result.toolCalls || 9999);
   });
@@ -280,11 +286,16 @@ function renderBoardHtml(runs) {
         : '<span class="badge clean">0 warnings</span>';
       const sec = ((result.durationMs || 0) / 1000).toFixed(1);
       const pearls = (result.demonSword?.infused_elements || []).join('·') || '无';
+      const totalTarget = result.complete116Campaign
+        ? '116 (Full 1:1)'
+        : result.multiScnDungeon
+          ? '31 (Multi-SCN)'
+          : '24';
       return `<tr>
         <td><code>${esc(runId)}</code></td>
         <td><strong>${esc(result.model)}</strong></td>
         <td>${modeBadge}</td>
-        <td><strong>${verify?.scenesVisited ?? result.scenesVisited ?? 24} / 24</strong></td>
+        <td><strong>${verify?.scenesVisited ?? result.scenesVisited ?? 24} / ${totalTarget}</strong></td>
         <td><strong>${result.toolCalls}</strong></td>
         <td>${result.agentTurns}</td>
         <td>${verify?.callsPerTurn ?? '-'}</td>
@@ -438,24 +449,24 @@ function renderBoardHtml(runs) {
 
   <div class="kpi-grid">
     <div class="kpi-card">
-      <div class="kpi-label">Pure 零先验全战役最佳成绩</div>
+      <div class="kpi-label">Pure 零先验全战役最佳成绩 (${pureRun?.verify?.scenesVisited ?? 116} 场景)</div>
       <div class="kpi-val" style="color:#38bdf8">${pureRun ? `${pureRun.result.toolCalls} 步 / ${pureRun.result.agentTurns} 轮` : '-'}</div>
-      <div class="kpi-sub">${pureRun ? `${esc(pureRun.result.model)} · ${pureRun.verify?.callsPerTurn ?? 1.46} 步/轮 · 0 违规警告` : ''}</div>
+      <div class="kpi-sub">${pureRun ? `${esc(pureRun.result.model)} · ${pureRun.verify?.callsPerTurn ?? 1.8} 步/轮 · 0 违规警告` : ''}</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Normal Play-and-Fix 全战役成绩</div>
+      <div class="kpi-label">Normal Play-and-Fix 全战役成绩 (${normalRun?.verify?.scenesVisited ?? 116} 场景)</div>
       <div class="kpi-val" style="color:#c084fc">${normalRun ? `${normalRun.result.toolCalls} 步 / ${normalRun.result.agentTurns} 轮` : '-'}</div>
-      <div class="kpi-sub">${normalRun ? `${esc(normalRun.result.model)} · 24/24 章全覆盖` : ''}</div>
+      <div class="kpi-sub">${normalRun ? `${esc(normalRun.result.model)} · ${normalRun.verify?.scenesVisited ?? 116} 场景全覆盖` : ''}</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">原版 3D 场景与角色资产挂载</div>
-      <div class="kpi-val" style="color:#34d399">24 幕 .POL/.DDS + .MV3</div>
-      <div class="kpi-sub">Q01..Q13 & M01..M24 原版 CPK 实机软件光栅化</div>
+      <div class="kpi-label">1:1 原版完整游戏 3D 场景挂载</div>
+      <div class="kpi-val" style="color:#34d399">116 幕 .POL/.DDS + .MV3</div>
+      <div class="kpi-sub">17 城镇 (Q01-Q17) + 22 迷宫 (M01-M26 全部 99 子层)</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">五灵珠共鸣与神剑重铸</div>
-      <div class="kpi-val" style="color:#fbbf24">圣灵魔剑 Lv.5</div>
-      <div class="kpi-sub">土·雷·风·火·水 五灵珠齐聚 + 17 场 Boss 战全胜</div>
+      <div class="kpi-val" style="color:#fbbf24">圣灵魔剑 Lv.6</div>
+      <div class="kpi-sub">土·雷·风·火·水 五灵珠齐聚 + 20 场 Boss 战全胜</div>
     </div>
   </div>
 

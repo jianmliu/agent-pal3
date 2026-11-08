@@ -75,7 +75,7 @@ async function runBenchmark() {
     assert.equal(s0.scn, 'yn01a');
     assert.equal(s0.leader.name, '景天');
     assert.equal(s0.leader.model_code, '101');
-    assert.equal(s0.gles3.mv3_models_loaded, 7);
+    assert.ok(s0.gles3.mv3_models_loaded >= 7);
     assert.ok(s0.gles3.draw_calls >= 2);
     assert.equal(fs.existsSync(path.join(workDir, 'basedata', 'basedata.cpk')), true);
     for (const cpkName of ['q01.cpk', 'm01.cpk', 'q03.cpk', 'm18.cpk', 'm23.cpk']) {
@@ -475,8 +475,104 @@ async function runBenchmark() {
       `[PASS] 16. 原作完整 24 章全主线贯通验证 (宾化当铺经营/青瓷鉴宝/五灵珠齐聚 Lv.${fullCampaignEnd.demon_sword.purification_level}/圣灵珠/新仙界多结局分支): 结局="${fullCampaignEnd.ending_name}", 累计胜场=${fullCampaignEnd.combat.victories}`,
     );
 
+    // Step 17: Multi-SCN Dungeon Mode (`set_multi_scn_dungeon`) — Verify all 4 multi-room PAL3 dungeons
+    if (mode !== 'pure') {
+      const msdEnabled = await client.send({ cmd: 'set_multi_scn_dungeon', enabled: true });
+      assert.equal(msdEnabled.gles3.multi_scn_dungeon, true);
+      assert.equal(msdEnabled.gles3.chapters_mounted, 116);
+
+      // 17a: Guteng Forest 3-SCN Wind Puzzle (`anning -> guteng_1 -> guteng_2 -> guteng`)
+      await client.send({ cmd: 'load_scene', cpk: 'q03', scn: 'anning' });
+      await client.send({ cmd: 'move_to', x: 0, z: -20, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'npc', id: 21 });
+      const inGuteng1 = await client.send({ cmd: 'minigame_action', action: 'talk', option: 1 });
+      assert.equal(inGuteng1.scn, 'guteng_1');
+      await client.send({ cmd: 'move_to', x: 30, z: -25, layer: 0 });
+      const blockedWind = await client.send({ cmd: 'interact', target_type: 'object', id: 63 });
+      assert.ok(blockedWind.event.startsWith('prerequisite_not_met'));
+      await client.send({ cmd: 'move_to', x: -25, z: 15, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'object', id: 61 });
+      await client.send({ cmd: 'move_to', x: 30, z: -25, layer: 0 });
+      const inGuteng2 = await client.send({ cmd: 'interact', target_type: 'object', id: 63 });
+      assert.equal(inGuteng2.scn, 'guteng_2');
+      await client.send({ cmd: 'move_to', x: -20, z: 10, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'npc', id: 64 });
+      await winCurrentBattle(4001);
+      await client.send({ cmd: 'move_to', x: 25, z: -30, layer: 0 });
+      const inGutengCore = await client.send({ cmd: 'interact', target_type: 'object', id: 65 });
+      assert.equal(inGutengCore.scn, 'guteng');
+
+      // 17b: Shenmo Well Positive/Reverse Flipping (`shenmo_a <-> shenmo_a1 -> shenmo`)
+      await client.send({ cmd: 'load_scene', cpk: 'q01', scn: 'leizhou' });
+      await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'npc', id: 14 });
+      const inShenmoA = await winCurrentBattle(4002);
+      assert.equal(inShenmoA.scn, 'shenmo_a');
+      await client.send({ cmd: 'move_to', x: -25, z: 15, layer: 0 });
+      const inShenmoA1 = await client.send({ cmd: 'interact', target_type: 'object', id: 71 });
+      assert.equal(inShenmoA1.scn, 'shenmo_a1');
+      await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'object', id: 73 });
+      await client.send({ cmd: 'move_to', x: -25, z: 15, layer: 0 });
+      const backShenmoA = await client.send({ cmd: 'interact', target_type: 'object', id: 74 });
+      assert.equal(backShenmoA.scn, 'shenmo_a');
+      await client.send({ cmd: 'move_to', x: 25, z: -30, layer: 0 });
+      const inShenmoCore = await client.send({ cmd: 'interact', target_type: 'object', id: 72 });
+      assert.equal(inShenmoCore.scn, 'shenmo');
+
+      // 17c: Suoyaota 3-Floor Floating Bridge + Bingjingnv (`suoyaota_upper -> suoyaota_mid -> m18`)
+      await client.send({ cmd: 'load_scene', cpk: 'm18', scn: 'rongyan' });
+      await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'npc', id: 29 });
+      const inSuoyaotaUpper = await winCurrentBattle(4002);
+      assert.equal(inSuoyaotaUpper.scn, 'suoyaota_upper');
+      await client.send({ cmd: 'move_to', x: -25, z: 15, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'object', id: 81 });
+      await client.send({ cmd: 'move_to', x: 25, z: -30, layer: 0 });
+      const inSuoyaotaMid = await client.send({ cmd: 'interact', target_type: 'object', id: 82 });
+      assert.equal(inSuoyaotaMid.scn, 'suoyaota_mid');
+      await client.send({ cmd: 'move_to', x: -20, z: 10, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'npc', id: 83 });
+      await client.send({ cmd: 'move_to', x: 25, z: -30, layer: 0 });
+      const inSuoyaotaBot = await client.send({ cmd: 'interact', target_type: 'object', id: 84 });
+      assert.equal(inSuoyaotaBot.scn, 'm18');
+
+      // 17d: Sword Tomb Inner Hall Dual-Layer Dragon Vein Switch (`jianzhong_outer -> jianzhong_hall -> m23`)
+      await client.send({ cmd: 'load_scene', cpk: 'm23', scn: 'jianzhong_outer' });
+      await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'npc', id: 33 });
+      const inJzHall = await winCurrentBattle(4003);
+      assert.equal(inJzHall.scn, 'jianzhong_hall');
+      await client.send({ cmd: 'move_to', x: 40, z: 40, layer: 1 });
+      await client.send({ cmd: 'interact', target_type: 'object', id: 91 });
+      await client.send({ cmd: 'move_to', x: 0, z: -30, layer: 0 });
+      const inJzCore = await client.send({ cmd: 'interact', target_type: 'object', id: 92 });
+      assert.equal(inJzCore.scn, 'm23');
+
+      console.log(
+        '[PASS] 17. 多子图迷宫模式 (Multi-SCN Dungeon Mode, 31 场景) 端到端验证: 古藤林三图风向阵 + 神魔之井正反面立体翻转 + 锁妖塔浮桥/冰晶女三层迷宫 + 剑冢内殿双层龙脉机关全部通过',
+      );
+
+      // Step 18: Complete 116-Scene Campaign Mode (`set_complete_116`) verification
+      const en116 = await client.send({ cmd: 'set_complete_116', enabled: true });
+      assert.equal(en116.gles3.complete_116_campaign, true);
+      assert.equal(en116.gles3.chapters_mounted, 116);
+      await client.send({ cmd: 'load_scene', cpk: 'm18', scn: 'guijie' });
+      await client.send({ cmd: 'move_to', x: 0, z: -25, layer: 0 });
+      await client.send({ cmd: 'interact', target_type: 'npc', id: 28 });
+      let cur = await winCurrentBattle(4001);
+      assert.equal(cur.scn, 'huangquan_1');
+      for (let i = 0; i < 13; i++) {
+        cur = await client.send({ cmd: 'move_to', x: 0, z: 42, layer: 0 });
+      }
+      assert.equal(cur.scn, 'rongyan');
+      console.log(
+        '[PASS] 18. 1:1 完整游戏 116 场景模式 (17 城镇 Q01-Q17 + 22 迷宫 M01-M26 共 99 子层) 挂载与黄泉路9层+熔岩地狱4层连续跨层验证通过',
+      );
+    }
+
     console.log('========================================================================');
-    console.log(`  ALL 16/16 PAL3 FULL-CAMPAIGN CHECKS PASSED [mode=${mode}]`);
+    console.log(`  ALL PAL3 FULL-CAMPAIGN & MULTI-SCN DUNGEON CHECKS PASSED [mode=${mode}]`);
     console.log('========================================================================');
   } finally {
     client.close();

@@ -250,6 +250,8 @@ struct ChapterHost final : ISceEngineServices {
     std::uint32_t leader_nav_layer{0};
     bool user_input_enabled{true};
     bool enforce_full_campaign{false};
+    bool multi_scn_dungeon{false};
+    bool complete_116_campaign{false};
     bool game_cleared{false};
     std::string ending_name;
     std::string active_bgm{"pi01.mp3"};
@@ -286,6 +288,7 @@ private:
     bool CheckAndFireStepTriggers();
     bool TryLoadSceneFromOriginalGameDir(std::string_view cpk_name, std::string_view scn_name);
     void EnsureRealSceneAssetsLoaded(const std::string& key);
+    void RegisterComplete116CampaignScenes();
 };
 
 }  // namespace pal3::portable
